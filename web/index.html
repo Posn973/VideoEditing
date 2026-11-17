@@ -223,6 +223,11 @@
 <input type="file" id="fileBg" hidden>
 <input type="file" id="fileSeg" accept=".json,application/json" hidden>
 
+<div id="exportNotice" hidden>
+  <div><b>書き出し中です（<span id="exportNoticePct">0%</span>）</b>
+    画面を消したり、ほかのアプリやタブに切り替えたりしないでください。途中で止まることがあります。</div>
+  <div class="sub" id="exportNoticeLock"></div>
+</div>
 <script src="lib/mediabunny.min.js"></script>
 <script src="js/compositor.js"></script>
 <script src="js/segments.js"></script>

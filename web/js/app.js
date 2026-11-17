@@ -1692,6 +1692,45 @@
     return { fileHandle, writable, name: n, dir };
   }
 
+  // ---- 書き出し中は画面が自動で消えないようにする（Screen Wake Lock）----
+  // 画面が消えたり、ほかのアプリに切り替えたりすると、ブラウザが処理を止めて書き出しが途中で終わるため
+  let wakeLock = null, wakeWanted = false, exportNoticeTimer = 0;
+  async function acquireWakeLock() {
+    if (!wakeWanted || wakeLock || document.visibilityState !== 'visible') return !!wakeLock;
+    try {
+      if (!('wakeLock' in navigator)) return false;
+      const lock = await navigator.wakeLock.request('screen');
+      if (!wakeWanted) { try { await lock.release(); } catch { } return false; }
+      wakeLock = lock;
+      lock.addEventListener('release', () => { if (wakeLock === lock) wakeLock = null; });
+      return true;
+    } catch { return false; }
+  }
+  async function releaseWakeLock() {
+    wakeWanted = false;
+    const lock = wakeLock; wakeLock = null;
+    if (lock) { try { await lock.release(); } catch { } }
+  }
+  // 裏に回ると自動で外れるので、戻ってきたらかけ直す
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && wakeWanted) acquireWakeLock().then(updateExportNotice);
+  });
+  function updateExportNotice() {
+    const n = $('exportNotice');
+    if (!exporting) { n.hidden = true; return; }
+    n.hidden = false;
+    const pct = Math.floor((el.progress.value || 0) / 10);
+    $('exportNoticePct').textContent = pct + '%';
+    $('exportNoticeLock').textContent = wakeLock
+      ? '書き出しが終わるまで、画面は自動では消えません。'
+      : 'この端末では画面が自動で消えるのを止められませんでした。終わるまで、ときどき画面に触れてください。';
+  }
+  function showExportNotice(on) {
+    clearInterval(exportNoticeTimer);
+    if (on) exportNoticeTimer = setInterval(updateExportNotice, 500);
+    updateExportNotice();
+  }
+
   async function startExport() {
     if (exporting || !lyric) return;
     if (!bg) { alert('② 背景を選んでください。'); return; }
@@ -1736,6 +1775,9 @@
     exporting = true;
     const abort = exportAbort = { aborted: false };
     updateButtons();
+    wakeWanted = true;
+    acquireWakeLock().then(updateExportNotice);
+    showExportNotice(true);
     el.progress.value = 0;
     el.lblStatus.textContent = '準備しています...';
     const startedAt = performance.now();
@@ -1852,6 +1894,8 @@
       pool.clear('export');
       exporting = false;
       exportAbort = null;
+      releaseWakeLock();
+      showExportNotice(false);
       updateButtons();
       if (ok) requestPreview(true);
     }
