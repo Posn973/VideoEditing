@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>歌詞動画 透過合成（Web 版）</title>
 <link rel="icon" href="icon.png">
-<link rel="stylesheet" href="css/style.css?v=20261118d">
+<link rel="stylesheet" href="css/style.css?v=20261118e">
 </head>
 <body>
 <div id="app">
@@ -224,18 +224,29 @@
 <input type="file" id="fileBg" hidden>
 <input type="file" id="fileSeg" accept=".json,application/json" hidden>
 
+<!-- 区間の設定を開いたまま全画面にしたときの操作ボタン（動画の下に出す） -->
+<div id="fullBar">
+  <button type="button" class="step" id="fbBackSec" title="1 秒戻る">≪</button>
+  <button type="button" class="step" id="fbBackFrame" title="1 コマ戻る（押し続けると連続）">＜</button>
+  <button type="button" class="play" id="fbPlay">▶ 再生</button>
+  <button type="button" class="step" id="fbFwdFrame" title="1 コマ進む（押し続けると連続）">＞</button>
+  <button type="button" class="step" id="fbFwdSec" title="1 秒進む">≫</button>
+  <button type="button" id="fbExit" title="全画面を終わって、区間の設定に戻ります">戻す</button>
+</div>
+<!-- 全画面にしたときのお知らせ（3 秒で消える） -->
+<div id="fullHint" hidden>ダブルタップで戻ります</div>
 <div id="exportNotice" hidden>
   <div><b>書き出し中です（<span id="exportNoticePct">0%</span>）</b>
     画面を消したり、ほかのアプリやタブに切り替えたりしないでください。途中で止まることがあります。</div>
   <div class="sub" id="exportNoticeLock"></div>
 </div>
 <script src="lib/mediabunny.min.js"></script>
-<script src="js/compositor.js?v=20261118d"></script>
-<script src="js/segments.js?v=20261118d"></script>
-<script src="js/pool.js?v=20261118d"></script>
-<script src="js/media.js?v=20261118d"></script>
-<script src="js/gpu.js?v=20261118d"></script>
-<script src="js/filestore.js?v=20261118d"></script>
-<script src="js/app.js?v=20261118d"></script>
+<script src="js/compositor.js?v=20261118e"></script>
+<script src="js/segments.js?v=20261118e"></script>
+<script src="js/pool.js?v=20261118e"></script>
+<script src="js/media.js?v=20261118e"></script>
+<script src="js/gpu.js?v=20261118e"></script>
+<script src="js/filestore.js?v=20261118e"></script>
+<script src="js/app.js?v=20261118e"></script>
 </body>
 </html>

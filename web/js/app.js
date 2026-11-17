@@ -396,6 +396,26 @@
   setupStepButton(el.btnFwdSec, () => stepSeconds(1), false);
   setupStepButton(el.btnBackFrame, () => stepFrames(-1), true);
   setupStepButton(el.btnFwdFrame, () => stepFrames(1), true);
+  // 全画面（区間の設定を開いたまま）の操作ボタン：下のボタンと同じ動き
+  setupStepButton($('fbBackSec'), () => stepSeconds(-1), false);
+  setupStepButton($('fbFwdSec'), () => stepSeconds(1), false);
+  setupStepButton($('fbBackFrame'), () => stepFrames(-1), true);
+  setupStepButton($('fbFwdFrame'), () => stepFrames(1), true);
+  $('fbPlay').addEventListener('click', () => el.btnPlay.click());
+  $('fbExit').addEventListener('click', () => { if (document.body.classList.contains('full')) toggleFullScreen(); });
+  for (const b of $('fullBar').querySelectorAll('button')) b.addEventListener('dblclick', e => e.stopPropagation());
+  {
+    // 再生ボタンの表示（▶ 再生／■ 停止）と使える・使えないを、下のボタンに合わせる
+    const fb = $('fbPlay'), sync = () => { fb.textContent = el.btnPlay.textContent; fb.disabled = el.btnPlay.disabled; };
+    new MutationObserver(sync).observe(el.btnPlay, { attributes: true, childList: true, characterData: true, subtree: true });
+    sync();
+    const steps = [['btnBackSec', 'fbBackSec'], ['btnBackFrame', 'fbBackFrame'], ['btnFwdFrame', 'fbFwdFrame'], ['btnFwdSec', 'fbFwdSec']];
+    for (const [src, dst] of steps) {
+      const f = () => { $(dst).disabled = el[src].disabled; };
+      new MutationObserver(f).observe(el[src], { attributes: true, attributeFilter: ['disabled'] });
+      f();
+    }
+  }
 
   document.addEventListener('keydown', onKeyDown);
   function onKeyDown(e) {
@@ -984,10 +1004,26 @@
   el.chkGpu.addEventListener('change', savePrefsSoon);
 
   // 全画面
+  // 全画面にしたとき、画面の上に「ダブルタップで戻ります」を出して 3 秒で消す
+  let fullHintTimer = 0;
+  function showFullHint(on) {
+    const n = $('fullHint');
+    clearTimeout(fullHintTimer);
+    if (!on) { n.hidden = true; return; }
+    const mobile = document.body.classList.contains('mobile');
+    n.textContent = mobile ? 'ダブルタップで戻ります' : 'ダブルクリック（または Esc）で戻ります';
+    n.classList.remove('fade');
+    n.hidden = false;
+    fullHintTimer = setTimeout(() => {
+      n.classList.add('fade');
+      fullHintTimer = setTimeout(() => { n.hidden = true; }, 400);
+    }, 3000);
+  }
   function toggleFullScreen() {
     const full = !document.body.classList.contains('full');
     document.body.classList.toggle('full', full);
     updateLayout();
+    showFullHint(full);
     try {
       if (full && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => { });
       if (!full && document.fullscreenElement) document.exitFullscreen().catch(() => { });
@@ -998,6 +1034,7 @@
     if (!document.fullscreenElement && document.body.classList.contains('full')) {
       document.body.classList.remove('full');
       updateLayout();
+      showFullHint(false);
     }
   });
   el.previewHost.addEventListener('dblclick', () => { if (lyric) toggleFullScreen(); });
