@@ -14,6 +14,16 @@
     function toRgba(src, w, h) {
       if (!src) return null;
       if (src.rgba) return new Uint8ClampedArray(src.rgba);
+      if (src.bitmap) {
+        // もう w×h に縮小してある画像：描いて画素を取り出すだけ
+        if (!cv || cv.width !== w || cv.height !== h) {
+          cv = new OffscreenCanvas(w, h);
+          cx = cv.getContext('2d', { willReadFrequently: true, alpha: false });
+        }
+        cx.drawImage(src.bitmap, 0, 0, w, h);
+        src.bitmap.close();
+        return cx.getImageData(0, 0, w, h).data;
+      }
       const vf = new VideoFrame(src.buf, src.meta);
       try {
         if (!cv || cv.width !== w || cv.height !== h) {
@@ -39,6 +49,24 @@
       const m = e.data;
       if (m.type === 'clear') {               // 使い終わった計算用のメモリを手放す
         for (const k of [...comps.keys()]) if (k.startsWith(m.key + ':')) comps.delete(k);
+        return;
+      }
+      if (m.type === 'estimate') {
+        // 背景色の推定だけを行う（GPU で再生するとき用。小さく縮小したコマを受け取る）
+        try {
+          const t0 = performance.now();
+          const fg = toRgba({ bitmap: m.bitmap }, m.w, m.h);
+          const key = `${m.key}:${m.w}x${m.h}`;
+          let c = comps.get(key);
+          if (!c) { c = new lib.Compositor(m.w, m.h); comps.set(key, c); }
+          c.backgroundReuseFrames = m.reuse | 0;
+          c.estimateBackground(fg);
+          const n = c.sw * c.sh, est = c.smEst, out = new Uint8ClampedArray(n * 4);
+          for (let i = 0, j = 0, p = 0; i < n; i++, j += 3, p += 4) { out[p] = est[j]; out[p + 1] = est[j + 1]; out[p + 2] = est[j + 2]; out[p + 3] = 255; }
+          self.postMessage({ id: m.id, out: out.buffer, sw: c.sw, sh: c.sh, conv: 0, comp: performance.now() - t0 }, [out.buffer]);
+        } catch (err) {
+          self.postMessage({ id: m.id, error: String(err && err.message || err) });
+        }
         return;
       }
       try {
@@ -94,6 +122,7 @@
         else {
           const out = new Uint8ClampedArray(m.out);
           out.timing = { conv: m.conv, comp: m.comp };     // かかった時間（再生の診断表示用）
+          if (m.sw) { out.sw = m.sw; out.sh = m.sh; }
           job.resolve(out);
         }
       };
@@ -128,6 +157,18 @@
       return this.processSrc({ rgba: fgBuf }, bgSrc, w, h, settings, opts);
     }
 
+    /** 背景色の推定だけを頼む（bitmap は w×h に縮小済み。w は 240 以下）。結果は sw×sh の RGBA */
+    estimate(bitmap, w, h, opts = {}) {
+      this.ensure(1);
+      const wk = this.workers[0];      // 推定の使い回しを続けるため、いつも同じ Worker で
+      const id = nextId++;
+      return new Promise((resolve, reject) => {
+        wk.jobs.set(id, { resolve, reject });
+        wk.busy++;
+        wk.w.postMessage({ type: 'estimate', id, w, h, bitmap, key: opts.key || 'est', reuse: opts.reuse || 0 }, [bitmap]);
+      });
+    }
+
     /**
      * 合成する。fgSrc・bgSrc は Media.frameForWorker() で作ったもの（YUV のデータ）か { rgba: ArrayBuffer }。
      * 大きさの変更（w×h）も Worker の中で行うので、画面側の処理が軽くなる。中のデータは手放す。
@@ -148,7 +189,7 @@
       const transfer = [];
       for (const src of [fgSrc, bgSrc]) {
         if (!src) continue;
-        const buf = src.rgba || src.buf;
+        const buf = src.rgba || src.buf || src.bitmap;
         if (buf && !transfer.includes(buf)) transfer.push(buf);
       }
       return new Promise((resolve, reject) => {

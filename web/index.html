@@ -102,6 +102,7 @@
   <main id="right">
     <div id="previewHost">
       <canvas id="preview"></canvas>
+      <canvas id="previewGL" hidden></canvas>
       <div id="previewMsg">① 歌詞動画 と ② 背景 を選ぶと、ここにプレビューが表示されます</div>
     </div>
     <div id="bottom">
@@ -133,6 +134,7 @@
         <span>再生の画質</span>
         <select id="cmbPlaySize">
           <option value="0">自動（画面に合わせる）</option>
+          <option value="5">とても軽い（横360）</option>
           <option value="1">軽い（横640）</option>
           <option value="2">標準（横960）</option>
           <option value="3">きれい（横1280）</option>
@@ -147,6 +149,7 @@
         <label><input type="radio" name="view" id="rbViewBg"> 背景</label>
         <button id="btnFull">⛶ 全画面（F11）</button>
         <button id="btnHelp" title="使い方の説明を開きます（F1）">？ ヘルプ</button>
+        <label title="再生中の合成をグラフィック（GPU）で計算して、滑らかに再生します。止めたときの表示と書き出しは、いつも正確な計算です"><input type="checkbox" id="chkGpu" checked> GPU で再生</label>
         <span class="hint" id="lblHint">（再生中も調整を変えるとすぐ反映されます）</span>
         <span id="lblPlayInfo" class="info"></span>
       </div>
@@ -225,6 +228,7 @@
 <script src="js/segments.js"></script>
 <script src="js/pool.js"></script>
 <script src="js/media.js"></script>
+<script src="js/gpu.js"></script>
 <script src="js/filestore.js"></script>
 <script src="js/app.js"></script>
 </body>

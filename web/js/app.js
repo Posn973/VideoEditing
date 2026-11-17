@@ -15,7 +15,7 @@
     'btnDelSeg', 'btnSaveSeg', 'btnLoadSeg', 'lblSegInfo', 'btnBackSec', 'btnBackFrame', 'btnPlay', 'btnFwdFrame', 'btnFwdSec',
     'lblTime', 'chkSound', 'trkVolume', 'lblVolume', 'cmbPlaySize', 'rbViewComposite', 'rbViewLyric', 'rbViewBg', 'btnFull',
     'lblPlayInfo', 'grpLyric', 'grpBg', 'fileLyric', 'fileBg', 'fileSeg', 'ctxMenu', 'aboutDialog', 'aboutClose',
-    'chkOutSameDir', 'segDialog', 'segDlgTitle', 'sdStart', 'sdEnd', 'sdStartLbl', 'sdEndLbl', 'sdNowStart', 'sdNowEnd', 'sdNudKey', 'sdTrkKey',
+    'chkOutSameDir', 'chkGpu', 'segDialog', 'segDlgTitle', 'sdStart', 'sdEnd', 'sdStartLbl', 'sdEndLbl', 'sdNowStart', 'sdNowEnd', 'sdNudKey', 'sdTrkKey',
     'sdNudOutline', 'sdTrkOutline', 'sdNudNoise', 'sdTrkNoise', 'sdColor', 'sdCustom', 'sdCopy', 'sdOk', 'sdCancel'])
     el[id] = $(id);
 
@@ -53,7 +53,7 @@
       KeyThreshold: +el.trkKey.value, OutlineRadius: +el.trkOutline.value, NoiseSize: +el.trkNoise.value,
       OutlineMode: +el.cmbColor.value, CustomColor: customColor, QualityIndex: +el.cmbQuality.value,
       BackgroundIsVideo: el.rbBgVideo.checked, PlayQuality: +el.cmbPlaySize.value,
-      PlaySound: el.chkSound.checked, Volume: +el.trkVolume.value, OutSameDir: el.chkOutSameDir.checked,
+      PlaySound: el.chkSound.checked, Volume: +el.trkVolume.value, OutSameDir: el.chkOutSameDir.checked, UseGpu: el.chkGpu.checked,
     });
     try { localStorage.setItem(STORE_KEY, JSON.stringify(prefs)); } catch { }
   }
@@ -543,13 +543,28 @@
     if (!player && lyricStill && viewMode === 0) el.lblPlayInfo.textContent = '';
   }
 
+  // ---- GPU（再生中のプレビュー用） ----
+  let gpu = null, gpuFailed = false;
+  function getGpu() {
+    if (gpu || gpuFailed) return gpu;
+    try { gpu = new GpuCompositor($('previewGL')); }
+    catch (e) { gpuFailed = true; console.warn('GPU を使えません:', e); toast('このブラウザでは GPU で再生できないので、ふつうの方法で再生します。', 6000); }
+    return gpu;
+  }
+  function showGl(on) {
+    $('previewGL').hidden = !on;
+    if (on) { el.preview.style.display = 'none'; el.previewMsg.hidden = true; }
+  }
+
   function drawRgba(data, w, h) {
+    showGl(false);
     if (el.preview.width !== w || el.preview.height !== h) { el.preview.width = w; el.preview.height = h; }
     ctxPreview.putImageData(new ImageData(data instanceof Uint8ClampedArray ? data : new Uint8ClampedArray(data), w, h), 0, 0);
     el.preview.style.display = 'block';
     el.previewMsg.hidden = true;
   }
   function showMsg(text) {
+    showGl(false);
     el.preview.style.display = 'none';
     el.previewMsg.hidden = false;
     el.previewMsg.textContent = text;
@@ -581,10 +596,14 @@
       let w = sw;
       if (q === 0) {
         // 画面の表示枠の大きさ（拡大率は掛けない。高解像度の画面でも計算量が増えすぎないように）
-        const fw = el.previewHost.clientWidth, fh = el.previewHost.clientHeight;
+        // GPU のときは画面の細かさ（拡大率）まで使ってくっきり表示する
+        const dpr = this.gpu ? Math.min(2, window.devicePixelRatio || 1) : 1;
+        const fw = el.previewHost.clientWidth * dpr, fh = el.previewHost.clientHeight * dpr;
         w = Math.floor(sw * Math.min(1, fw / sw, fh / sh));
+        // スマホ・タブレットで CPU を使うときは計算が重いので、画素数を 540×304 くらいまでにする
+        if (!this.gpu && document.body.classList.contains('mobile')) w = Math.min(w, Math.floor(Math.sqrt(540 * 304 * sw / sh)));
       } else if (q !== 4) {
-        const max = [0, 640, 960, 1280][q];
+        const max = q === 5 ? 360 : [0, 640, 960, 1280][q];
         if (sw > max) w = max;
       }
       const h = Math.round(sh * w / sw);
@@ -631,6 +650,7 @@
      * 2 つを同時に進めるので、表示の時刻を待っている間も次のコマの準備が進む。
      */
     async run() {
+      this.gpu = el.chkGpu.checked ? getGpu() : null;
       const [w, h] = this.playSize();
       this.w = w; this.h = h;
       this.frameDur = 1 / fps();
@@ -640,13 +660,131 @@
       this.stat = { read: 0, conv: 0, comp: 0, made: 0, skipped: 0, waitedJob: 0 };   // 重さの内訳（診断表示用）
       this.waiters = [];                         // 読む側・見せる側を起こす合図を待っている人
       let error = null;
-      const producer = this.produce(w, h).catch(e => { error = error || e; }).finally(() => { this.producerDone = true; this.signal(); });
-      try { await this.consume(); } catch (e) { error = error || e; }
+      if (this.gpu) {
+        this.maxQ = 4;                            // コマ（VideoFrame）をためすぎるとデコーダーが止まるので少なめ
+        this.gpu.resize(w, h);
+        // 背景色の推定に使う縮小の大きさ（CPU の計算と同じく横 240 まで）
+        this.ew = Math.min(240, w); this.eh = Math.max(1, Math.round(h * this.ew / w));
+      }
+      const producer = (this.gpu ? this.produceGpu(w, h) : this.produce(w, h))
+        .catch(e => { error = error || e; }).finally(() => { this.producerDone = true; this.signal(); });
+      try { await (this.gpu ? this.consumeGpu() : this.consume()); } catch (e) { error = error || e; }
       this.stopped = this.stopped || !!error;
       this.signal();
       await producer;
-      for (const j of this.q) j.job.catch(() => { });
+      for (const j of this.q) {
+        if (j.job) j.job.catch(() => { });
+        if (j.est) j.est.catch(() => { });
+        if (j.fg) try { j.fg.close(); } catch { }
+        if (j.bg) try { j.bg.close(); } catch { }
+      }
       return error;
+    }
+
+    // ---- GPU で再生するとき ----
+    async produceGpu(w, h) {
+      const bReader = bg && !bg.isImage ? new SequentialReader(bg, this.start, true) : null;
+      const frameDur = this.frameDur;
+      const it = lyric.sink.samples(lyric.firstTimestamp + this.start);
+      try {
+        for (; ;) {
+          while (this.q.length >= this.maxQ && !this.stopped) await this.waitSignal();
+          if (this.stopped) break;
+          const r = await it.next();
+          if (r.done) break;
+          const s = r.value;
+          if (this.stopped) { s.close(); break; }
+          const t = s.timestamp - lyric.firstTimestamp;
+          if (t < this.start - frameDur * 0.5) { s.close(); continue; }
+          const due = t - this.start;
+          if (this.clockRunning && this.now() > due + frameDur * 0.5 && this.now() - this.lastShow < 0.3) {
+            s.close();
+            this.stat.skipped++;
+            if (bReader) await bReader.frameAt(t + 1e-4);
+            continue;
+          }
+          const p0 = performance.now();
+          const fg = s.toVideoFrame();
+          s.close();
+          let bgf = null;
+          if (bReader) { const b = await bReader.frameAt(t + 1e-4); bgf = b ? b.toVideoFrame() : null; }
+          // 背景色の推定は計算スレッドで（縮小したコマを渡す）
+          let est = null;
+          try {
+            const bmp = await createImageBitmap(fg, { resizeWidth: this.ew, resizeHeight: this.eh, resizeQuality: 'medium' });
+            est = pool.estimate(bmp, this.ew, this.eh, { key: 'playest', reuse: 16 });
+          } catch { est = null; }
+          this.stat.read += performance.now() - p0;
+          const entry = { t, due, fg, bg: bgf, est, ready: !est };
+          if (est) est.then(() => { entry.ready = true; }, () => { entry.ready = true; });
+          this.q.push(entry);
+          this.signal();
+        }
+      } finally {
+        try { it.return(); } catch { }
+        if (bReader) bReader.close();
+      }
+    }
+
+    async consumeGpu() {
+      for (; ;) {
+        if (!this.clockRunning) {
+          const need = Math.min(this.maxQ, 3);
+          while (!this.stopped && !this.producerDone && this.q.length < need) await this.waitSignal();
+        }
+        while (!this.stopped && !this.producerDone && this.q.length === 0) await this.waitSignal();
+        if (this.stopped || this.q.length === 0) return;
+        const job = this.q[0];
+        const w0 = performance.now();
+        let est = null;
+        if (job.est) {
+          if (job.ready || !this.haveEst) { try { est = await job.est; } catch { est = null; } }
+          else {
+            // 背景色の推定がまだ：表示の時刻までは待つが、間に合わなければ前のコマの推定のまま描く（カクつきを防ぐ）
+            const left = Math.max(0, job.due - this.now()) * 1000;
+            const r = await Promise.race([job.est.catch(() => null), sleep(left).then(() => undefined)]);
+            est = r === undefined ? null : r;
+          }
+        }
+        this.stat.waitedJob += performance.now() - w0;
+        this.q.shift();
+        this.signal();
+        const close = () => { try { job.fg.close(); } catch { } if (job.bg) try { job.bg.close(); } catch { } };
+        if (this.stopped) { close(); return; }
+        if (est) { this.gpu.setEstimate(est, est.sw || this.ew, est.sh || this.eh); this.haveEst = true; this.stat.comp += est.timing ? est.timing.comp : 0; }
+        if (!this.clockRunning) { await this.startClock(); if (this.stopped) { close(); return; } }
+        this.syncClock();
+        const next = this.q[0];
+        if (next && this.now() > next.due && next.ready) { close(); this.stat.skipped++; continue; }
+        const wait = job.due - this.now();
+        if (wait > 0.002) await sleep(wait * 1000);
+        if (this.stopped) { close(); return; }
+        const g0 = performance.now();
+        const bgSrc = job.bg || (bg && bg.isImage ? bg.bitmap : null);
+        const bgKey = job.bg ? null : (bg && bg.isImage ? 'img:' + bg.name + ':' + bg.file.size : null);
+        try { this.gpu.render(job.fg, bgSrc, bgKey, timeline.at(job.t), viewMode); }
+        finally { close(); }
+        this.stat.conv += performance.now() - g0;
+        this.stat.made++;
+        showGl(true);
+        this.position = this.start + job.due;
+        this.lastShow = this.now();
+        curTime = this.position;
+        updateTime();
+        this.shown++;
+        const el2 = performance.now() - this.fpsWatch;
+        if (el2 >= 1000) {
+          this.displayFps = this.shown * 1000 / el2;
+          this.shown = 0;
+          this.fpsWatch = performance.now();
+          const st = this.stat, m = Math.max(1, st.made);
+          el.lblPlayInfo.textContent = `再生中（GPU）　${this.displayFps.toFixed(0)} コマ/秒（${this.w}×${this.h}）` +
+            `　｜読込 ${(st.read / Math.max(1, m + st.skipped)).toFixed(0)}ms　描画 ${(st.conv / m).toFixed(1)}ms　背景色の推定 ${(st.comp / m).toFixed(0)}ms` +
+            `　待ち ${(st.waitedJob / m).toFixed(0)}ms　飛ばし ${st.skipped}`;
+          this.stat = { read: 0, conv: 0, comp: 0, made: 0, skipped: 0, waitedJob: 0 };
+          updateSegInfo();
+        }
+      }
     }
 
     // 待っている側をすべて起こす（読む側と見せる側が同時に待っても取りこぼさないように、待ち手を全部覚えておく）
@@ -691,8 +829,11 @@
             } else bgSrc = { rgba: bgImg.slice().buffer };
           } else if (bReader) await bReader.frameAt(t + 1e-4);
           this.stat.read += performance.now() - p0;
-          const job = pool.processSrc(fgSrc, bgSrc, w, h, timeline.at(t),
-            { mode, key: 'play', reuse: 8, workerIndex: n % PLAY_WORKERS, workers: PLAY_WORKERS });
+          // 再生中は軽い計算（Fast）にする。止めたときの表示と書き出しは、正確な計算のまま
+          const st = timeline.at(t);
+          st.Fast = true;
+          // 空いている計算スレッドに頼む（スマホは速いコアと遅いコアが混ざっているので、順番に割り振るより速い）
+          const job = pool.processSrc(fgSrc, bgSrc, w, h, st, { mode, key: 'play', reuse: 16, workers: PLAY_WORKERS });
           const entry = { t, due, job, ready: false };
           job.then(() => { entry.ready = true; }, () => { });
           this.q.push(entry);
@@ -805,6 +946,7 @@
   }, { passive: false });
   el.cmbPlaySize.addEventListener('change', savePrefsSoon);
   el.chkOutSameDir.addEventListener('change', savePrefsSoon);
+  el.chkGpu.addEventListener('change', savePrefsSoon);
 
   // 全画面
   function toggleFullScreen() {
@@ -1695,6 +1837,7 @@
     el.btnSaveSeg.disabled = !(haveLyric && segments.length);
     el.trkTime.disabled = !haveLyric;
     el.cmbPlaySize.disabled = !!player;
+    el.chkGpu.disabled = !!player;
     for (const c of [el.btnLyric, el.btnBg, el.rbBgImage, el.rbBgVideo, el.trkKey, el.trkOutline, el.nudKey, el.nudOutline,
       el.trkNoise, el.nudNoise, el.cmbColor, el.colCustom, el.btnReset, el.btnSetBase, el.cmbQuality, el.txtOut, el.chkOutSameDir])
       c.disabled = !idle;
@@ -1856,10 +1999,11 @@
     if (p.OutlineMode != null) el.cmbColor.value = String(clamp(p.OutlineMode, 0, 4));
     if (p.QualityIndex != null) el.cmbQuality.value = String(clamp(p.QualityIndex, 0, 2));
     if (p.BackgroundIsVideo) el.rbBgVideo.checked = true;
-    if (p.PlayQuality != null) el.cmbPlaySize.value = String(clamp(p.PlayQuality, 0, 4));
+    if (p.PlayQuality != null) el.cmbPlaySize.value = String(clamp(p.PlayQuality, 0, 5));
     if (p.PlaySound != null) el.chkSound.checked = !!p.PlaySound;
     if (p.Volume != null) el.trkVolume.value = clamp(p.Volume, 0, 100);
     if (p.OutSameDir != null) el.chkOutSameDir.checked = !!p.OutSameDir;
+    if (p.UseGpu != null) el.chkGpu.checked = !!p.UseGpu;
     applyVolume();
   }
 

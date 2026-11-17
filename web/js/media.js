@@ -49,6 +49,24 @@
    * 呼び出した側で sample を close() すること。
    */
   async function frameForWorker(sample, w, h, fit, quality = 'high') {
+    // 再生中（quality が high 以外）：ブラウザの機能で先に w×h へ縮小した画像（ImageBitmap）を渡す。
+    // 元の大きさのデータをコピーしないので速い（スマホで特に効く）
+    if (quality !== 'high' && typeof createImageBitmap === 'function') {
+      let vf = null;
+      try {
+        vf = sample.toVideoFrame();
+        const sw = vf.displayWidth, sh = vf.displayHeight;
+        let sx = 0, sy = 0, cw = sw, ch = sh;
+        if (fit === 'cover') {
+          const k = Math.max(w / sw, h / sh);
+          cw = w / k; ch = h / k; sx = (sw - cw) / 2; sy = (sh - ch) / 2;
+        }
+        const bmp = await createImageBitmap(vf, Math.round(sx), Math.round(sy), Math.round(cw), Math.round(ch),
+          { resizeWidth: w, resizeHeight: h, resizeQuality: quality === 'low' ? 'low' : 'medium' });
+        return { bitmap: bmp };
+      } catch { /* 下の方法で */ }
+      finally { if (vf) vf.close(); }
+    }
     const vf = sample.toVideoFrame();
     try {
       if (vf.format) {

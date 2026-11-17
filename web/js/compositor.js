@@ -28,6 +28,7 @@ function createCompositorLib() {
   }
   const Kernel12 = gaussianKernel(12.0);
   const Kernel2 = gaussianKernel(2.0);
+  const Kernel1 = gaussianKernel(1.0);   // 再生中の軽い計算用（4 分の 1 の大きさで、半分の大きさの Kernel2 とほぼ同じぼかし）
 
   function reflect101(i, len) {
     if (len === 1) return 0;
@@ -284,22 +285,42 @@ function createCompositorLib() {
       const radius = Math.max(0, s.OutlineRadius);
       const useOutline = radius > 0.01;
       const auto = s.OutlineMode === OutlineColorMode.Auto;
-      const hw = this.hw, hh = this.hh, hLum = this.hLum, hMask = this.hMask;
+      // 縁取りの色（自動）のための「周りの文字の明るさ」は、縮小した画像で計算する。
+      // ふつうは半分の大きさ。再生中（s.Fast）は 4 分の 1 の大きさで計算して軽くする（見た目はほぼ同じ）。
+      const fast = !!s.Fast;
+      const sh = fast ? 2 : 1, blk = 1 << sh;
+      let hw, hh, hLum, hMask, hTmp;
+      if (fast) {
+        hw = Math.max(1, W >> 2); hh = Math.max(1, H >> 2);
+        if (!this.qLum || this.qLum.length !== hw * hh) {
+          this.qLum = new Float32Array(hw * hh); this.qMask = new Float32Array(hw * hh); this.qTmp = new Float32Array(hw * hh);
+        }
+        hLum = this.qLum; hMask = this.qMask; hTmp = this.qTmp;
+      } else {
+        hw = this.hw; hh = this.hh; hLum = this.hLum; hMask = this.hMask; hTmp = this.hTmp;
+      }
 
       if (useOutline) {
         distanceTransform(maskF, dist, this.rowTmp, W, H, Math.ceil(radius) + 2);
         if (auto) {
-          // 周りの文字の明るさ（半分のサイズで計算して速くする）
+          const inv = 1 / (blk * blk);
           for (let y = 0; y < hh; y++) {
-            const r0 = Math.min(2 * y, H - 1) * W, r1 = Math.min(2 * y + 1, H - 1) * W;
             for (let x = 0; x < hw; x++) {
-              const x0 = Math.min(2 * x, W - 1), x1 = Math.min(2 * x + 1, W - 1);
-              hLum[y * hw + x] = (lumM[r0 + x0] + lumM[r0 + x1] + lumM[r1 + x0] + lumM[r1 + x1]) * 0.25;
-              hMask[y * hw + x] = (maskF[r0 + x0] + maskF[r0 + x1] + maskF[r1 + x0] + maskF[r1 + x1]) * 0.25;
+              let sl = 0, sm = 0;
+              for (let dy = 0; dy < blk; dy++) {
+                const r = Math.min(blk * y + dy, H - 1) * W;
+                for (let dx = 0; dx < blk; dx++) {
+                  const xx = Math.min(blk * x + dx, W - 1);
+                  sl += lumM[r + xx]; sm += maskF[r + xx];
+                }
+              }
+              hLum[y * hw + x] = sl * inv;
+              hMask[y * hw + x] = sm * inv;
             }
           }
-          blurPlane(hLum, hLum, this.hTmp, hw, hh, Kernel2);
-          blurPlane(hMask, hMask, this.hTmp, hw, hh, Kernel2);
+          const k = fast ? Kernel1 : Kernel2;
+          blurPlane(hLum, hLum, hTmp, hw, hh, k);
+          blurPlane(hMask, hMask, hTmp, hw, hh, k);
         }
       }
 
@@ -315,7 +336,7 @@ function createCompositorLib() {
       // 4) 背景 → 縁取り → 前景の順に重ねる
       for (let y = 0; y < H; y++) {
         const row = y * W;
-        const hrow = Math.min(y >> 1, hh - 1) * hw;
+        const hrow = Math.min(y >> sh, hh - 1) * hw;
         for (let x = 0; x < W; x++) {
           const i = row + x, p = i * 4;
           const a = alpha[i];
@@ -334,7 +355,7 @@ function createCompositorLib() {
             if (oa > 0) {
               let cr = fixR, cg = fixG, cb = fixB;
               if (auto) {
-                const hi = hrow + Math.min(x >> 1, hw - 1);
+                const hi = hrow + Math.min(x >> sh, hw - 1);
                 const ln = hLum[hi] / Math.max(hMask[hi], 1e-4);
                 let t = (ln - 0.45) / 0.2;   // 1 = 明るい文字 → 濃い縁取り
                 t = t < 0 ? 0 : (t > 1 ? 1 : t);
