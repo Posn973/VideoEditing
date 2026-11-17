@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>歌詞動画 透過合成（Web 版）</title>
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <!-- 左側：設定 -->
+  <aside id="left">
+    <section class="group" id="grpLyric">
+      <h2>① 歌詞動画（文字・効果）</h2>
+      <div class="row">
+        <input type="text" id="txtLyric" readonly placeholder="ファイルを選んでください">
+        <button id="btnLyric">参照...</button>
+      </div>
+      <div class="info" id="lblLyricInfo"></div>
+    </section>
+
+    <section class="group" id="grpBg">
+      <h2>② 背景</h2>
+      <div class="row">
+        <label><input type="radio" name="bgType" id="rbBgImage" checked> 画像</label>
+        <label><input type="radio" name="bgType" id="rbBgVideo"> 動画</label>
+      </div>
+      <div class="row">
+        <input type="text" id="txtBg" readonly placeholder="ファイルを選んでください">
+        <button id="btnBg">参照...</button>
+      </div>
+      <div class="info" id="lblBgInfo"></div>
+      <div class="note">画像・動画はこの枠にドラッグ＆ドロップでも登録できます。<br>背景動画が短いときは繰り返します。</div>
+    </section>
+
+    <section class="group" id="grpAdjust">
+      <h2>③ 調整（全体・区間の外）</h2>
+      <div class="sliderBlock" data-key="KeyThreshold">
+        <div class="row between"><span>背景の抜き具合（0～400）</span><input type="number" min="0" max="400" value="83" id="nudKey"></div>
+        <input type="range" min="0" max="400" value="83" id="trkKey">
+        <div class="note">大きく：背景がよく抜ける　小さく：薄い文字や効果も残る</div>
+      </div>
+      <div class="sliderBlock">
+        <div class="row between"><span>縁取りの太さ（px、0 で縁取りなし）</span><input type="number" min="0" max="12" value="4" id="nudOutline"></div>
+        <input type="range" min="0" max="12" value="4" id="trkOutline">
+      </div>
+      <div class="sliderBlock">
+        <div class="row between"><span>粒ノイズを消す（0 で切）</span><input type="number" min="0" max="30" value="0" id="nudNoise"></div>
+        <input type="range" min="0" max="30" value="0" id="trkNoise">
+        <div class="note">この大きさより小さい粒を消します。濁点や「。」が消えない値に</div>
+      </div>
+      <div class="row">
+        <span>縁取りの色</span>
+        <select id="cmbColor">
+          <option value="0">自動（暗い文字は白・明るい文字は濃い紫）</option>
+          <option value="1">白</option>
+          <option value="2">黒</option>
+          <option value="3">濃い紫</option>
+          <option value="4">指定した色</option>
+        </select>
+        <input type="color" id="colCustom" value="#ffffff" title="指定した色">
+      </div>
+      <div class="row">
+        <button id="btnReset">調整を初期値に戻す</button>
+        <button id="btnSetBase">この値を基準値にする</button>
+      </div>
+    </section>
+
+    <section class="group" id="grpExport">
+      <h2>④ 書き出し</h2>
+      <div class="row">
+        <span>画質</span>
+        <select id="cmbQuality">
+          <option value="0">最高画質（ファイル大）</option>
+          <option value="1" selected>高画質（おすすめ）</option>
+          <option value="2">標準</option>
+        </select>
+      </div>
+      <div class="row">
+        <span>ファイル名</span>
+        <input type="text" id="txtOut" placeholder="合成.mp4">
+      </div>
+      <div class="row">
+        <label title="オン：保存の画面を出さずに、歌詞動画と同じフォルダーへ書き出します（フォルダーごとに最初の 1 回だけ確認があります）&#10;オフ：書き出すときに保存先を選びます"><input type="checkbox" id="chkOutSameDir" checked> 歌詞動画と同じフォルダーに保存する</label>
+      </div>
+      <div class="row">
+        <button id="btnExport" class="big">書き出し開始</button>
+        <button id="btnCancel" disabled>中止</button>
+      </div>
+      <progress id="progress" max="1000" value="0"></progress>
+      <div class="info" id="lblStatus"></div>
+    </section>
+
+    <div class="footer">
+      <span id="lblEnv"></span>
+      <span><a href="help.html" target="_blank" rel="noopener">ヘルプ</a>　<a href="#" id="lnkAbout">このアプリについて</a></span>
+    </div>
+  </aside>
+
+  <!-- 右側：プレビュー -->
+  <main id="right">
+    <div id="previewHost">
+      <canvas id="preview"></canvas>
+      <div id="previewMsg">① 歌詞動画 と ② 背景 を選ぶと、ここにプレビューが表示されます</div>
+    </div>
+    <div id="bottom">
+      <input type="range" id="trkTime" min="0" max="0" step="any" value="0">
+      <canvas id="segBar" height="24"></canvas>
+      <div class="row" id="segRow">
+        <button id="btnMarkStart">◆ ここから</button>
+        <button id="btnMarkEnd">ここまで ◆</button>
+        <button id="btnAddSeg" class="bold">＋ 区間を追加</button>
+        <button id="btnEditSeg">区間の設定...</button>
+        <button id="btnDelSeg">区間を削除</button>
+        <button id="btnSaveSeg">区間を保存...</button>
+        <button id="btnLoadSeg">区間を読み込み...</button>
+        <span id="lblSegInfo" class="info"></span>
+      </div>
+      <div class="row" id="playRow">
+        <button id="btnBackSec" class="step" title="1 秒戻る（Shift＋←）">≪</button>
+        <button id="btnBackFrame" class="step" title="1 コマ戻る（←）　押し続けると連続で戻ります">＜</button>
+        <button id="btnPlay" class="play">▶ 再生</button>
+        <button id="btnFwdFrame" class="step" title="1 コマ進む（→）　押し続けると連続で進みます">＞</button>
+        <button id="btnFwdSec" class="step" title="1 秒進む（Shift＋→）">≫</button>
+        <span id="lblTime">0:00.0 / 0:00</span>
+        <span class="grp">
+          <label><input type="checkbox" id="chkSound" checked> 音を出す</label>
+          <input type="range" id="trkVolume" min="0" max="100" value="100" title="再生の音量（再生中でもすぐ変わります）">
+          <span id="lblVolume">100%</span>
+        </span>
+        <span class="grp">
+        <span>再生の画質</span>
+        <select id="cmbPlaySize">
+          <option value="0">自動（画面に合わせる）</option>
+          <option value="1">軽い（横640）</option>
+          <option value="2">標準（横960）</option>
+          <option value="3">きれい（横1280）</option>
+          <option value="4">元のサイズ</option>
+        </select>
+        </span>
+      </div>
+      <div class="row" id="viewRow">
+        <span>表示：</span>
+        <label><input type="radio" name="view" id="rbViewComposite" checked> 合成結果</label>
+        <label><input type="radio" name="view" id="rbViewLyric"> 元の歌詞動画</label>
+        <label><input type="radio" name="view" id="rbViewBg"> 背景</label>
+        <button id="btnFull">⛶ 全画面（F11）</button>
+        <button id="btnHelp" title="使い方の説明を開きます（F1）">？ ヘルプ</button>
+        <span class="hint">（再生中も調整を変えるとすぐ反映されます）</span>
+        <span id="lblPlayInfo" class="info"></span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- 区間の設定（開いたまま、コマ送りや再生で確認できる） -->
+<div id="segDialog" class="floating" hidden>
+  <div class="dlgTitle" id="segDlgBar">
+    <span id="segDlgTitle">区間の設定</span>
+    <button id="sdPopout" class="titleBtn" title="この設定をブラウザの外の別の窓に出します。窓は好きな場所に動かせて、いつも手前に表示されます">⧉ 別の窓に出す</button>
+  </div>
+  <div class="dlgBody">
+    <h3>区間の時間（秒）</h3>
+    <div class="row"><span class="lbl">始まり</span><input type="number" step="0.01" min="0" id="sdStart"><span id="sdStartLbl" class="info"></span><button id="sdNowStart">今の位置にする</button></div>
+    <div class="row"><span class="lbl">終わり</span><input type="number" step="0.01" min="0" id="sdEnd"><span id="sdEndLbl" class="info"></span><button id="sdNowEnd">今の位置にする</button></div>
+    <h3>この区間の調整</h3>
+    <div class="row between"><span>背景の抜き具合（0～400）</span><input type="number" min="0" max="400" id="sdNudKey"></div>
+    <input type="range" min="0" max="400" id="sdTrkKey">
+    <div class="row between"><span>縁取りの太さ（px、0 で縁取りなし）</span><input type="number" min="0" max="12" id="sdNudOutline"></div>
+    <input type="range" min="0" max="12" id="sdTrkOutline">
+    <div class="row between"><span>粒ノイズを消す（0 で切）</span><input type="number" min="0" max="30" id="sdNudNoise"></div>
+    <input type="range" min="0" max="30" id="sdTrkNoise">
+    <div class="row">
+      <span>縁取りの色</span>
+      <select id="sdColor">
+        <option value="0">自動（暗い文字は白・明るい文字は濃い紫）</option>
+        <option value="1">白</option>
+        <option value="2">黒</option>
+        <option value="3">濃い紫</option>
+        <option value="4">指定した色</option>
+      </select>
+      <input type="color" id="sdCustom" value="#ffffff">
+    </div>
+    <div class="row dlgButtons">
+      <button id="sdCopy">③ 調整（全体）の値をコピー</button>
+      <span class="spacer"></span>
+      <a href="help.html#segments" target="_blank" rel="noopener" title="区間の使い方を開きます">使い方</a>
+      <button id="sdOk" class="bold">OK</button>
+      <button id="sdCancel">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- 確認（ボタンを押してもらう必要があるとき） -->
+<div id="askDialog" class="floating center" hidden>
+  <div class="dlgTitle"><span id="askTitle">確認</span></div>
+  <div class="dlgBody">
+    <p id="askMsg" style="white-space: pre-line"></p>
+    <div class="row dlgButtons" id="askBtns"></div>
+  </div>
+</div>
+
+<!-- 右クリックメニュー -->
+<div id="ctxMenu" class="menu" hidden></div>
+
+<!-- このアプリについて -->
+<div id="aboutDialog" class="floating center" hidden>
+  <div class="dlgTitle">このアプリについて</div>
+  <div class="dlgBody">
+    <p>歌詞動画の背景を抜いて、文字と効果だけを別の背景（画像・動画）に重ねるアプリです。</p>
+    <p>動画の読み込み・合成・書き出しは、すべてこのパソコンのブラウザの中で行います。<b>ファイルがどこかへ送られることはありません。</b></p>
+    <p>対応ブラウザ：Google Chrome、Microsoft Edge（パソコン版）</p>
+    <p class="note">動画の読み書きに <a href="https://mediabunny.dev/" target="_blank" rel="noopener">Mediabunny</a>（MPL-2.0）を使っています。</p>
+    <div class="row dlgButtons"><span class="spacer"></span><button id="aboutClose">閉じる</button></div>
+  </div>
+</div>
+
+<input type="file" id="fileLyric" accept="video/*,.mp4,.mov,.m4v,.mkv,.webm" hidden>
+<input type="file" id="fileBg" hidden>
+<input type="file" id="fileSeg" accept=".json,application/json" hidden>
+
+<script src="lib/mediabunny.min.js"></script>
+<script src="js/compositor.js"></script>
+<script src="js/segments.js"></script>
+<script src="js/pool.js"></script>
+<script src="js/media.js"></script>
+<script src="js/filestore.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

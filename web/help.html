@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ヘルプ｜歌詞動画 透過合成（Web 版）</title>
+<link rel="icon" href="icon.png">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #f4f5f7; color: #222; line-height: 1.8;
+    font-family: "Yu Gothic UI", "Meiryo UI", "Hiragino Sans", system-ui, sans-serif; font-size: 15px;
+  }
+  header { background: #0b4f8a; color: #fff; padding: 18px 24px; }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 4px 0 0; opacity: .85; font-size: 14px; }
+  .wrap { display: flex; max-width: 1200px; margin: 0 auto; gap: 24px; padding: 20px; }
+  nav { width: 230px; flex: none; position: sticky; top: 12px; align-self: flex-start; font-size: 14px; }
+  nav ol { margin: 0; padding-left: 20px; }
+  nav li { margin: 3px 0; }
+  nav ol ol { padding-left: 16px; font-size: 13px; }
+  main { flex: 1; min-width: 0; }
+  section { background: #fff; border: 1px solid #dde1e6; border-radius: 6px; padding: 6px 24px 18px; margin-bottom: 20px; }
+  h2 { font-size: 19px; color: #0b4f8a; border-bottom: 2px solid #0b4f8a; padding-bottom: 4px; margin-top: 18px; }
+  h3 { font-size: 16px; margin: 22px 0 6px; color: #333; }
+  a { color: #0b62b0; }
+  img { max-width: 100%; border: 1px solid #ccc; border-radius: 4px; display: block; margin: 8px 0 4px; }
+  .cap { font-size: 13px; color: #666; margin: 0 0 12px; }
+  .key, kbd {
+    display: inline-block; padding: 0 6px; border: 1px solid #aaa; border-bottom-width: 2px; border-radius: 4px;
+    background: #fafafa; font-family: inherit; font-size: 13px; line-height: 1.6;
+  }
+  .btn { display: inline-block; padding: 0 8px; border: 1px solid #999; border-radius: 3px; background: #fdfdfd; font-size: 14px; white-space: nowrap; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 14px; }
+  th, td { border: 1px solid #d6dbe0; padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #eef3f8; white-space: nowrap; }
+  h4 { font-size: 15px; margin: 14px 0 4px; }
+  .steps { counter-reset: step; list-style: none; padding: 0; }
+  .steps > li { position: relative; padding: 10px 12px 10px 52px; margin: 10px 0; background: #f7f9fb; border: 1px solid #e1e6ec; border-radius: 6px; }
+  .steps > li::before {
+    counter-increment: step; content: counter(step);
+    position: absolute; left: 12px; top: 10px; width: 28px; height: 28px; border-radius: 50%;
+    background: #0b4f8a; color: #fff; text-align: center; line-height: 28px; font-weight: bold;
+  }
+  .note { background: #fff8e1; border-left: 4px solid #f0b400; padding: 8px 14px; margin: 12px 0; border-radius: 0 4px 4px 0; }
+  .tip { background: #e8f4ec; border-left: 4px solid #2e9a57; padding: 8px 14px; margin: 12px 0; border-radius: 0 4px 4px 0; }
+  .good { color: #1b7a3c; font-weight: bold; }
+  .bad { color: #b3261e; font-weight: bold; }
+  .seg { display: inline-block; width: 26px; height: 12px; background: rgb(225,40,40); vertical-align: middle; border-radius: 2px; }
+  .mk1 { color: rgb(0,150,60); font-weight: bold; }
+  .mk2 { color: rgb(0,90,200); font-weight: bold; }
+  @media (max-width: 860px) { .wrap { flex-direction: column; } nav { position: static; width: auto; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>歌詞動画 透過合成（Web 版）ヘルプ</h1>
+  <p>歌詞動画の背景を抜いて、文字と効果だけを好きな背景（画像・動画）に重ねるアプリです。</p>
+</header>
+
+<div class="wrap">
+<nav>
+  <ol>
+    <li><a href="#about">このアプリでできること</a></li>
+    <li><a href="#start">はじめに（動作環境・起動）</a></li>
+    <li><a href="#screen">画面の見かた</a></li>
+    <li><a href="#basic">基本の使い方</a></li>
+    <li><a href="#adjust">③ 調整の各項目</a></li>
+    <li><a href="#segments">区間ごとの調整</a>
+      <ol>
+        <li><a href="#seg-why">区間とは</a></li>
+        <li><a href="#seg-steps">区間を作って調整する手順</a></li>
+        <li><a href="#seg-popout">設定をブラウザの外に出す</a></li>
+        <li><a href="#seg-tune">ノイズ・欠けの直し方</a></li>
+        <li><a href="#seg-bar">区間のバーの操作</a></li>
+        <li><a href="#seg-file">区間の保存・読み込み</a></li>
+      </ol>
+    </li>
+    <li><a href="#play">再生・コマ送り・表示</a></li>
+    <li><a href="#export">書き出し</a>
+      <ol><li><a href="#export-folder">歌詞動画と同じフォルダーに保存</a></li></ol>
+    </li>
+    <li><a href="#keys">キーボード操作</a></li>
+    <li><a href="#faq">困ったとき</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ============================================================ -->
+<section id="about">
+  <h2>1. このアプリでできること</h2>
+  <ul>
+    <li>歌詞動画（文字や効果が入った動画）から、<b>背景の部分だけを自動で抜き</b>、文字と効果を別の背景に重ねます。</li>
+    <li>背景には<b>画像</b>または<b>動画</b>を使えます。背景動画が歌詞動画より短いときは、繰り返して使います。</li>
+    <li>文字のまわりに<b>縁取り</b>を付けて、背景の上でも読みやすくできます。</li>
+    <li>場面ごとに背景の抜け方が違うときは、<b>区間ごとに別の調整値</b>を使えます。</li>
+    <li>合成した結果を <b>MP4 動画</b>として書き出せます。音声は歌詞動画のものをそのまま使います。</li>
+  </ul>
+  <div class="tip">動画の読み込み・合成・書き出しは、<b>すべてパソコンのブラウザの中で行います</b>。ファイルがどこかへ送られることはありません。</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="start">
+  <h2>2. はじめに（動作環境・起動）</h2>
+  <table>
+    <tr><th>ブラウザ</th><td>Google Chrome または Microsoft Edge（パソコン版の最新版）</td></tr>
+    <tr><th>動画の形式</th><td>MP4（H.264 など）。背景画像は JPEG・PNG など一般的な画像</td></tr>
+    <tr><th>起動</th><td><code>index.html</code> を Chrome または Edge で開きます（ブラウザのウィンドウにドラッグしても開けます）。インターネットにつながっていなくても動きます。</td></tr>
+  </table>
+  <div class="note">調整値・音量などの設定は、使っているブラウザの中に自動で保存され、次に開いたときも同じ値から始まります。</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="screen">
+  <h2>3. 画面の見かた</h2>
+  <img src="help/screen-main.png" alt="アプリの画面全体">
+  <p class="cap">画面全体。左に設定、右にプレビューと操作ボタンがあります。</p>
+  <table>
+    <tr><th>① 歌詞動画</th><td>文字・効果が入った元の動画を選びます。</td></tr>
+    <tr><th>② 背景</th><td>重ねる先の背景（画像または動画）を選びます。</td></tr>
+    <tr><th>③ 調整</th><td>背景の抜き具合・縁取りなどを決めます。区間を作った場合は「区間の外」で使う値になります。</td></tr>
+    <tr><th>④ 書き出し</th><td>画質とファイル名を決めて、MP4 に書き出します。</td></tr>
+    <tr><th>プレビュー</th><td>今の位置の合成結果が表示されます。調整を変えるとすぐ反映されます。</td></tr>
+    <tr><th>時間のスライダー</th><td>動かすと、その位置のコマが表示されます。</td></tr>
+    <tr><th>区間のバー</th><td>スライダーのすぐ下の細いバーです。作った区間が<span class="seg"></span> 赤色で表示されます。</td></tr>
+    <tr><th>操作ボタン</th><td>区間の操作、再生・コマ送り、音量、表示の切り替え、全画面などのボタンが並んでいます。</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<section id="basic">
+  <h2>4. 基本の使い方</h2>
+  <ol class="steps">
+    <li><b>歌詞動画を選ぶ</b><br>① の <span class="btn">参照...</span> を押して歌詞動画を選びます。ファイルを ① の枠にドラッグ＆ドロップしても登録できます。</li>
+    <li><b>背景を選ぶ</b><br>② で「画像」か「動画」を選び、<span class="btn">参照...</span> で背景を選びます（ドラッグ＆ドロップでも可）。縦横の比率が違うときは、はみ出す部分を切り取って全体に合わせます。</li>
+    <li><b>プレビューで確認しながら調整する</b><br>時間のスライダーやコマ送りでいろいろな場面を見ながら、③ の値を調整します（<a href="#adjust">各項目の説明</a>）。<span class="btn">▶ 再生</span> で動きも確認できます。</li>
+    <li><b>うまく抜けない場面だけ区間で直す</b><br>一部の場面だけノイズが残る・文字が欠けるときは、その場面を区間にして別の値で調整します（<a href="#segments">区間ごとの調整</a>）。</li>
+    <li><b>書き出す</b><br>④ で画質を選び、<span class="btn">書き出し開始</span> を押して保存先を決めると、MP4 が作られます。</li>
+  </ol>
+</section>
+
+<!-- ============================================================ -->
+<section id="adjust">
+  <h2>5. ③ 調整の各項目</h2>
+  <p>数値は、スライダー・数値欄への入力のほか、数値欄の両側の <span class="btn">▼</span> <span class="btn">▲</span> で <b>1 ずつ</b>細かく変えられます。押し続けると連続で変わり、だんだん速くなります。</p>
+  <table>
+    <tr><th>背景の抜き具合<br>（0～400）</th><td>
+      歌詞動画の背景色との「色の差」がこの値より小さい部分を、透明（背景）として抜きます。<br>
+      <span class="good">大きくする</span>：背景がよく抜け、ノイズや模様の残りが減ります。ただし薄い文字・光の効果・影まで消えやすくなります。<br>
+      <span class="good">小さくする</span>：薄い文字や効果も残ります。ただし背景の模様やざらつきが残りやすくなります。<br>
+      まずは初期値の <b>83</b> から始めて、少しずつ動かすのがおすすめです。</td></tr>
+    <tr><th>縁取りの太さ<br>（0～12 px）</th><td>文字のまわりに付ける縁の太さです。<b>0</b> で縁取りなし。背景が明るい・模様が多いときは太めにすると読みやすくなります。</td></tr>
+    <tr><th>粒ノイズを消す<br>（0～30）</th><td>
+      抜いたあとに残る小さな粒（点々）を消します。この値の大きさの四角より面積の小さいかたまりを消します。<b>0</b> で使いません。<br>
+      大きくしすぎると、<b>濁点（゛）や句点（。）などの小さな文字の部分まで消える</b>ので、消えない値に留めてください。</td></tr>
+    <tr><th>縁取りの色</th><td>
+      <b>自動</b>：暗い文字には白、明るい文字には濃い紫の縁を付けます（文字ごとに自動で切り替え）。<br>
+      <b>白・黒・濃い紫</b>：いつもその色。<b>指定した色</b>：右の色の四角を押して好きな色を選べます。</td></tr>
+    <tr><th>調整を初期値に戻す</th><td>「基準値」を保存していればその値に、なければアプリの初期値（抜き具合 83・縁取り 4・粒 0・自動）に戻します。</td></tr>
+    <tr><th>この値を基準値にする</th><td>今の値を「基準値」として保存します。よく使う値を登録しておくと、<span class="btn">調整を初期値に戻す</span> でいつでもその値に戻せます。</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<section id="segments">
+  <h2>6. 区間ごとの調整</h2>
+
+  <h3 id="seg-why">6-1. 区間とは</h3>
+  <p>歌詞動画は場面によって背景の色や模様が変わるため、<b>1 つの調整値では全体がうまく抜けない</b>ことがあります。たとえば、</p>
+  <ul>
+    <li>サビの部分だけ背景がちらつき、<b>ノイズや模様が残る</b></li>
+    <li>ある場面だけ文字の色が背景に近く、<b>文字が欠ける・薄くなる</b></li>
+  </ul>
+  <p>このようなときは、その場面だけを<b>「区間」</b>（ここから～ここまで）として指定し、<b>区間の中だけ別の調整値</b>を使います。区間の外は ③ 調整の値がそのまま使われます。</p>
+  <div class="tip">区間の境目では、0.25 秒かけて調整値が<b>なめらかに切り替わる</b>ので、急に見た目が変わることはありません。</div>
+
+  <h3 id="seg-steps">6-2. 区間を作って調整する手順</h3>
+  <ol class="steps">
+    <li><b>直したい場面を探す</b><br>
+      まず ③ 調整で、動画全体がだいたいうまく抜けるように合わせておきます。<br>
+      次に、時間のスライダー・<span class="btn">▶ 再生</span>・コマ送り（<kbd>←</kbd> <kbd>→</kbd>）で、ノイズが出る・文字が欠けるなど、<b>うまくいかない場面の始まり</b>を探します。</li>
+    <li><b>「ここから」を指定する</b><br>
+      問題の場面が始まる位置で <span class="btn">◆ ここから</span> を押します。区間のバーに<span class="mk1">緑の印</span>が付きます。</li>
+    <li><b>「ここまで」を指定する</b><br>
+      そのまま再生やコマ送りで<b>問題の場面が終わる位置</b>まで進め、<span class="btn">ここまで ◆</span> を押します。<span class="mk2">青の印</span>が付き、その間が水色になります。<br>
+      <img src="help/screen-marks.png" alt="ここから・ここまでを指定したところ">
+      <span class="cap">「ここから」（緑）と「ここまで」（青）を指定したところ。間が水色になり、<span class="btn">＋ 区間を追加</span> が押せるようになります。</span></li>
+    <li><b>区間を追加する</b><br>
+      <span class="btn">＋ 区間を追加</span> を押します。区間のバーに<span class="seg"></span> 赤い区間ができます。<br>
+      作ったばかりの区間には、③ 調整（全体）と同じ値が入っています。</li>
+    <li><b>区間の設定を開く</b><br>
+      赤い区間が選ばれている（黒い枠が付いている）状態で <span class="btn">区間の設定...</span> を押します。赤い区間を<b>ダブルクリック</b>しても開けます。<br>
+      今の位置が区間の外だったときは、区間の始まりへ自動で移動します。</li>
+    <li><b>ノイズなどが消えるように調整する</b><br>
+      「区間の設定」の小さな窓で、<b>背景の抜き具合</b>・<b>粒ノイズを消す</b>・<b>縁取り</b>などを調整します。値を変えると、プレビューにすぐ反映されます。<br>
+      窓は<b>開いたまま</b>、コマ送りや再生で区間のいろいろな位置を確認できます。窓はタイトルの部分をドラッグして動かせます。<br>
+      窓がプレビューに重なって見にくいときは、窓の右上の <span class="btn">⧉ 別の窓に出す</span> を押してください（<a href="#seg-popout">くわしく</a>）。
+      <img src="help/screen-segdialog.png" alt="区間の設定の窓">
+      <span class="cap">数値の両側の <span class="btn">▼</span> <span class="btn">▲</span> で 1 ずつ細かく変えられます（押し続けると連続）。区間の設定の窓。この例では、背景の抜き具合を 120、粒ノイズを消すを 4 にしています。</span>
+      <ul>
+        <li><b>ノイズ・模様が残る</b> → 背景の抜き具合を<b>大きく</b>する。点々が残るなら粒ノイズを消すも少し上げる</li>
+        <li><b>文字が欠ける・効果が消える</b> → 背景の抜き具合を<b>小さく</b>する</li>
+        <li>詳しくは <a href="#seg-tune">6-3. ノイズ・欠けの直し方</a> を見てください</li>
+      </ul></li>
+    <li><b>必要なら区間の範囲を直す</b><br>
+      窓の「始まり」「終わり」に秒数を入れて範囲を直せます。両側の <span class="btn">▼</span> <span class="btn">▲</span> を押すと <b>1 コマずつ</b>前後に動き、その位置がプレビューに表示されるので、区間の境目を確かめながら合わせられます。<span class="btn">今の位置にする</span> を押すと、今表示している位置をそのまま始まり・終わりにできます。</li>
+    <li><b>OK で確定する</b><br>
+      うまく抜けたら <span class="btn">OK</span> を押します。<span class="btn">キャンセル</span> を押すと、窓を開く前の状態に戻ります。<br>
+      <span class="btn">③ 調整（全体）の値をコピー</span> を押すと、全体の値を入れ直してやり直せます。</li>
+    <li><b>ほかの場面も同じように直す</b><br>
+      問題のある場面ごとに 1～8 をくり返して、区間をいくつでも作れます。最後に <a href="#seg-file">区間を保存</a> しておくと、あとで続きから作業できます。</li>
+  </ol>
+  <div class="note">
+    ・区間どうしを<b>重ねることはできません</b>（追加するときに重なっていると知らせます）。<br>
+    ・区間を作ったり直したりして保存していないときは、区間の情報の右に「※未保存」と表示されます。<br>
+    ・別の歌詞動画を選ぶと、区間は消えます（区間は歌詞動画ごとのものです）。
+  </div>
+
+  <h3 id="seg-popout">区間の設定をブラウザの外に出す</h3>
+  <p>区間の設定の窓の右上にある <span class="btn">⧉ 別の窓に出す</span> を押すと、設定が<b>ブラウザの外の別の窓</b>になります。</p>
+  <ul>
+    <li>別の窓は<b>画面のどこへでも動かせて</b>、大きさも変えられます。<b>いつも手前に表示</b>されるので、プレビューを大きく見ながら調整できます。</li>
+    <li>別の窓の中でも <kbd>←</kbd> <kbd>→</kbd> でコマ送り、<kbd>スペース</kbd> で再生・停止ができます。</li>
+    <li><span class="btn">OK</span> で確定、<span class="btn">キャンセル</span> で元に戻します。窓の <b>×</b> で閉じたときは<b>キャンセルと同じ</b>（変更を取り消し）になります。</li>
+    <li>一度別の窓に出すと、次に区間の設定を開いたときも別の窓で開きます。ブラウザの中に戻したいときは <span class="btn">↩ ブラウザの中に戻す</span> を押してください。</li>
+    <li>別の窓を開いたまま、区間のバーでほかの区間をダブルクリックすると、同じ窓の中身がその区間に切り替わります。</li>
+  </ul>
+  <div class="note">この機能は Google Chrome・Microsoft Edge（バージョン 116 以降）で使えます。</div>
+
+  <h3 id="seg-tune">6-3. ノイズ・欠けの直し方</h3>
+  <table>
+    <tr><th>こんなとき</th><th>こうする</th></tr>
+    <tr><td>背景の模様・ざらつきが文字のまわりに残る</td><td>背景の抜き具合を <b>5～20 ずつ大きく</b>する</td></tr>
+    <tr><td>画面のあちこちに小さな点々が残る</td><td>粒ノイズを消すを <b>2～6 くらい</b>にする（濁点や「。」が消えない範囲で）</td></tr>
+    <tr><td>文字の一部が欠ける・細くなる</td><td>背景の抜き具合を<b>小さく</b>する</td></tr>
+    <tr><td>光・ぼかし・影などの効果が消える</td><td>背景の抜き具合を<b>小さく</b>する。残ったざらつきは粒ノイズを消すで取る</td></tr>
+    <tr><td>濁点や「。」が消えた</td><td>粒ノイズを消すを<b>小さく</b>する</td></tr>
+    <tr><td>文字が背景に埋もれて読みにくい</td><td>縁取りを太くする・縁取りの色を変える</td></tr>
+  </table>
+  <div class="tip">
+    下の「表示：」で <b>元の歌詞動画</b> に切り替えると、合成する前の元の動画を見られます。どこが文字でどこが背景かを見比べるときに便利です。<br>
+    ノイズは止まった 1 コマでは目立たなくても、動くと目立つことがあります。最後に <span class="btn">▶ 再生</span> で区間全体を通して確認してください。
+  </div>
+
+  <h3 id="seg-bar">6-4. 区間のバーの操作</h3>
+  <img src="help/screen-segbar.png" alt="区間のバー">
+  <p class="cap">区間のバー。赤い部分が区間、黒い枠が付いているのが選ばれている区間、黒い縦線が今の位置です。</p>
+  <table>
+    <tr><th>何もない所をクリック</th><td>その位置へ移動します。</td></tr>
+    <tr><th>赤い区間をクリック</th><td>その区間を選びます（黒い枠が付きます）。</td></tr>
+    <tr><th>赤い区間をダブルクリック</th><td>区間の設定を開きます。</td></tr>
+    <tr><th>赤い区間を右クリック</th><td>メニュー：区間の設定・区間の始まりへ移動・区間の終わりへ移動・区間を削除</td></tr>
+    <tr><th>何もない所を右クリック</th><td>メニュー：その位置を「ここから」にする・「ここまで」にする・印を消す</td></tr>
+    <tr><th><span class="btn">区間を削除</span></th><td>選んでいる区間を削除します（確認があります）。</td></tr>
+  </table>
+  <p>区間のバーの下には、今の位置が区間の中か外か、区間の中ならその区間の調整値が表示されます。</p>
+
+  <h3 id="seg-file">6-5. 区間の保存・読み込み</h3>
+  <h4>保存する</h4>
+  <ul>
+    <li><span class="btn">区間を保存...</span> を押すと、保存の画面が<b>歌詞動画のあるフォルダー</b>で開きます。歌詞動画と背景が同じフォルダーなら、そのままそこに保存できます。</li>
+    <li>区間ファイル（<code>○○_区間.json</code>）には、区間・③ 調整（全体）の値・歌詞動画と背景のファイル名が入ります。</li>
+    <li>あわせて、歌詞動画と背景が<b>どこにあるか</b>を、このブラウザの中に覚えておきます。</li>
+  </ul>
+  <h4>読み込む</h4>
+  <ul>
+    <li><span class="btn">区間を読み込み...</span> で区間ファイルを選ぶと、覚えておいた場所から<b>歌詞動画と背景も自動でセット</b>されます。区間ファイルを画面にドラッグ＆ドロップしても同じです。</li>
+    <li>ブラウザを開き直したあとの最初の読み込みでは、「読み込む」ボタンの付いた確認が出ます。押すとブラウザに「ファイルの表示を許可しますか？」と出るので、<b>「許可」</b>を押してください（ブラウザの決まりで、この確認は省けません）。</li>
+    <li><b>保存したときと違うときは確認が出ます</b>：
+      <ul>
+        <li>歌詞動画・背景の<b>中身が変わっている</b>（大きさや更新日時が違う）とき →「このファイルを使いますか？」</li>
+        <li>保存した場所に<b>見つからない</b>（移動した・名前を変えた）とき → フォルダーを選ぶと、その中（サブフォルダーも含む）から同じ名前のファイルを探し、見つかった場所を見せて「このファイルを使いますか？」と確認します。</li>
+      </ul>
+      確認で「OK」を選ぶと、次からはその場所・そのファイルを確認なしで使います。
+    </li>
+    <li><b>別のパソコン・別のブラウザで保存した区間ファイル</b>や、<b>Windows 版で保存した区間ファイル</b>は、場所の記録がないため、フォルダーを選んで探す方法になります。区間ファイルといっしょに歌詞動画・背景を選ぶ（複数のファイルを同時に選ぶ）こともできます。</li>
+  </ul>
+  <div class="note">
+    ・場所を覚えるのは、「参照...」またはドラッグ＆ドロップで選んだファイルです。<br>
+    ・場所の記録は、このパソコンのこのブラウザ（Chrome または Edge）の中だけにあります。ブラウザの「閲覧履歴データの削除」でサイトのデータを消すと、記録も消えます（その場合はフォルダーを選んで探す方法になります）。<br>
+    ・区間ファイルは <b>Windows 版（VideoEditing）と同じ形式</b>です。どちらで保存したものも読み込めます。
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="play">
+  <h2>7. 再生・コマ送り・表示</h2>
+  <table>
+    <tr><th><span class="btn">≪</span> <span class="btn">≫</span></th><td>1 秒戻る／進む</td></tr>
+    <tr><th><span class="btn">＜</span> <span class="btn">＞</span></th><td>1 コマ戻る／進む。押し続けると連続で動きます。</td></tr>
+    <tr><th><span class="btn">▶ 再生</span></th><td>合成結果を再生します。再生中に調整を変えると、次のコマからすぐ反映されます。最後まで再生したあとに押すと、最初から再生します。</td></tr>
+    <tr><th>音を出す・音量</th><td>再生のときに歌詞動画の音を出すかどうかと、その音量です（書き出す動画の音量は変わりません）。</td></tr>
+    <tr><th>再生の画質</th><td>再生するときの画面の細かさです。<b>自動</b>はプレビューの枠に合わせます。カクつくときは「軽い（横640）」にしてください。書き出しの画質には関係ありません。</td></tr>
+    <tr><th>表示：</th><td><b>合成結果</b>／<b>元の歌詞動画</b>／<b>背景</b> を切り替えて表示できます。</td></tr>
+    <tr><th><span class="btn">⛶ 全画面（F11）</span></th><td>プレビューを画面いっぱいに表示します。<kbd>Esc</kbd> で戻ります。プレビューのダブルクリックでも切り替えられます。</td></tr>
+  </table>
+  <p>再生中は、画面の下に次のような情報が表示されます。</p>
+  <p><code>再生中 30 コマ/秒（1054×592）｜読込 3ms 変換 8ms 合成 25ms（8並列） 待ち 0ms 飛ばし 0</code></p>
+  <table>
+    <tr><th>○ コマ/秒</th><td>1 秒間に表示できているコマの数（元の動画のコマ数に近いほど滑らか）</td></tr>
+    <tr><th>読込・変換・合成</th><td>1 コマを用意するのにかかっている時間</td></tr>
+    <tr><th>待ち・飛ばし</th><td>合成が間に合わなかった時間と、表示を飛ばしたコマの数（多いときは再生の画質を下げてください）</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<section id="export">
+  <h2>8. 書き出し</h2>
+  <ol class="steps">
+    <li>④ の <b>画質</b> を選びます。「最高画質（ファイル大）」「高画質（おすすめ）」「標準」から選べます。</li>
+    <li><b>ファイル名</b> を確認します（歌詞動画を選ぶと「元の名前_合成.mp4」が自動で入ります）。</li>
+    <li><span class="btn">書き出し開始</span> を押します。「歌詞動画と同じフォルダーに保存する」がオンなら、<b>歌詞動画と同じフォルダー</b>にそのまま書き出します（下の説明を見てください）。</li>
+    <li>進み具合・速さ・残り時間が表示されます。終わると、保存した場所（フォルダー名\ファイル名）が表示されます。途中でやめるときは <span class="btn">中止</span> を押します（途中までのファイルは消えます）。</li>
+  </ol>
+
+  <h3 id="export-folder">歌詞動画と同じフォルダーに保存する</h3>
+  <ul>
+    <li><b>オン（はじめの設定）</b>：保存の画面を出さずに、歌詞動画と同じフォルダーへ書き出します。</li>
+    <li><b>フォルダーごとに最初の 1 回だけ</b>確認があります：
+      <ol>
+        <li>「書き出し先のフォルダー」の確認で <span class="btn">フォルダーを確認</span> を押す</li>
+        <li>歌詞動画のフォルダーが開いた状態で「フォルダーの選択」の画面が出るので、そのまま <b>「フォルダーの選択」</b> を押す</li>
+        <li>ブラウザの確認（「変更を保存しますか？」など）で <b>「変更を保存」</b>（「許可」）を押す</li>
+      </ol>
+      次からは、そのフォルダーの歌詞動画は確認なしで書き出します。</li>
+    <li>ブラウザを開き直したあとの最初の書き出しでは、書き込みの許可の確認だけがもう一度出ます。</li>
+    <li>同じ名前のファイルがすでにあるときは、<b>上書きせずに</b>「○○_合成 (2).mp4」のように番号を付けて保存します。</li>
+    <li>確認の画面で <span class="btn">保存先を選ぶ</span> を押すと、今回だけ保存先を選べます。</li>
+    <li><b>オフ</b>：書き出すたびに保存の画面が出ます（歌詞動画のフォルダーで開きます）。</li>
+  </ul>
+  <div class="note">歌詞動画のフォルダーがわかるのは、「参照...」・ドラッグ＆ドロップ・区間ファイルの読み込みでセットした歌詞動画のときです。わからないときは保存の画面が出ます。</div>
+
+  <h3>そのほか</h3>
+  <ul>
+    <li>書き出す動画の大きさ・コマ数は歌詞動画と同じです。音声は歌詞動画のものを<b>作り直さずにそのまま</b>入れます。</li>
+    <li>書き出しには、書き出しを始めたときの ③ 調整と区間の値が使われます。</li>
+    <li>書き出し中は、ほかの操作はできません。ブラウザのタブを閉じると書き出しは止まります。</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<section id="keys">
+  <h2>9. キーボード操作</h2>
+  <table>
+    <tr><th><kbd>←</kbd> / <kbd>→</kbd></th><td>1 コマ戻る／進む（押し続けると連続）</td></tr>
+    <tr><th><kbd>Shift</kbd>＋<kbd>←</kbd> / <kbd>→</kbd></th><td>1 秒戻る／進む</td></tr>
+    <tr><th><kbd>スペース</kbd></th><td>再生／停止</td></tr>
+    <tr><th><kbd>F11</kbd></th><td>全画面の切り替え（<kbd>Esc</kbd> で戻る）</td></tr>
+    <tr><th><kbd>F1</kbd></th><td>このヘルプを開く</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<section id="faq">
+  <h2>10. 困ったとき</h2>
+  <h3>動画を選んでも読み込めない</h3>
+  <p>MP4（H.264）の動画を使ってください。Chrome・Edge 以外のブラウザでは動かないことがあります。</p>
+  <h3>再生がカクつく</h3>
+  <p>「再生の画質」を「軽い（横640）」や「標準（横960）」にしてください。ほかの重いアプリを閉じると改善することもあります。再生の滑らかさは書き出しの結果には影響しません。</p>
+  <h3>背景がうまく抜けない場面がある</h3>
+  <p><a href="#segments">区間ごとの調整</a> で、その場面だけ値を変えてください。</p>
+  <h3>濁点や「。」が消える</h3>
+  <p>「粒ノイズを消す」の値を小さくしてください。区間で使っている場合は、その区間の設定も確認してください。</p>
+  <h3>区間ファイルを読み込んでも、歌詞動画・背景がセットされない</h3>
+  <p>別のパソコン・Windows 版で保存した区間ファイルや、ファイルを移動した場合は、「フォルダーを選んで探す」でファイルのあるフォルダーを選んでください。<span class="btn">区間を読み込み...</span> で、区間ファイルと歌詞動画（と背景）を<b>いっしょに選ぶ</b>こともできます（<a href="#seg-file">くわしく</a>）。</p>
+  <h3>書き出しが遅い</h3>
+  <p>書き出しは元の大きさで 1 コマずつ合成するため、再生より時間がかかります。進み具合の横に残り時間の目安が表示されます。</p>
+</section>
+
+</main>
+</div>
+</body>
+</html>
