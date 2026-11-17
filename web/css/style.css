@@ -68,7 +68,8 @@ progress { width: 100%; height: 18px; }
 #lblVolume { width: 42px; }
 #viewRow .hint { color: #888; margin-left: 10px; }
 #segRow { flex-wrap: wrap; }
-#lblSegInfo { margin-left: 8px; }
+#lblSegInfo { margin: 0 0 2px 2px; }
+#lblPlayInfo { margin: 2px 0 0 2px; }
 
 /* 全画面 */
 body.full #left, body.full #bottom { display: none; }
@@ -196,3 +197,54 @@ body.full #previewHost { position: static; height: 100vh !important; box-shadow:
 body.mobile.full #right { width: 100%; height: 100vh; }
 body.mobile .row.between > span:first-child { white-space: normal; flex: 1; min-width: 0; }
 body.mobile .spin { flex: none; }
+
+/* ==================================================================
+   スマホの縦向き：画面を 3 段に分ける（body.split は app.js が付ける）
+     上段：動画のプレビュー
+     中段：時間・区間のボタン・再生などのボタン（横に入りきらない行は左右にスワイプ）
+     下段：区間の設定・③ 調整（ほかに ①② ファイル・④ 書き出し）
+   ================================================================== */
+body.split { height: 100dvh; overflow: hidden; }
+html:has(body.split) { height: 100dvh; overflow: hidden; }
+body.split #app { display: flex; flex-direction: column; height: 100dvh; }
+body.split #right { display: contents; }
+body.split #previewHost { order: 0; position: relative; flex: none; height: var(--pvh, 34dvh); }
+body.split #bottom {
+  order: 1; flex: none; max-height: 38dvh; overflow-y: auto; overflow-x: hidden;
+  padding: 2px 6px 4px; border-bottom: 2px solid #b8c4d0; background: #f0f0f0;
+}
+body.split #left {
+  order: 2; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: auto;
+  display: flex; flex-direction: column; padding: 6px 8px 16px; -webkit-overflow-scrolling: touch;
+}
+/* 中段：横に入りきらない行は左右にスワイプ */
+body.split #segRow, body.split #playRow, body.split #viewRow {
+  flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
+  justify-content: flex-start; margin: 3px 0; padding-bottom: 2px;
+}
+body.split #segRow > *, body.split #playRow > *, body.split #viewRow > * { flex: none; }
+body.split #segRow button { padding: 4px 10px; }
+body.split #playRow button.step { width: 44px; height: 42px; }
+body.split #playRow button.play { width: 96px; height: 42px; }
+body.split #lblTime { flex-basis: auto; min-width: 0; margin: 0 6px; font-size: 13px; }
+body.split #playRow .grp { flex-basis: auto; }
+body.split #trkVolume { width: 110px; flex: none; }
+body.split #trkTime { margin: 4px 0 0; }
+body.split #segBar { height: 26px; }
+body.split #lblSegInfo, body.split #lblPlayInfo { font-size: 11px; min-height: 0; }
+/* 下段の並び：区間の設定 → ③ 調整 → ① → ② → ④ */
+body.split #segDialog { order: -1; }
+body.split #grpAdjust { order: 0; }
+body.split #grpLyric { order: 1; }
+body.split #grpBg { order: 2; }
+body.split #grpExport { order: 3; }
+body.split .footer { order: 4; }
+body.split .group { flex: none; }
+/* 区間の設定は下段のいちばん上に出す */
+body.split #segDialog:not(.inPip) {
+  position: static !important; left: auto !important; right: auto !important; top: auto !important; bottom: auto !important;
+  width: auto; max-height: none; overflow: visible; flex: none;
+  border: 2px solid #0b4f8a; border-radius: 6px; box-shadow: none; margin-bottom: 8px;
+}
+body.split #segDialog:not(.inPip) .dlgTitle { border-radius: 4px 4px 0 0; position: sticky; top: -6px; z-index: 1; }
+body.split #segRow button, body.split #playRow button, body.split #viewRow button { flex: none; }

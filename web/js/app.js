@@ -1202,6 +1202,7 @@
     for (const n of [el.sdStart, el.sdEnd]) { n.max = lyric.duration.toFixed(2); n.step = step; }
     loadDialogValues(seg);
     el.segDialog.hidden = false;
+    if (document.body.classList.contains('split')) $('left').scrollTo({ top: 0, behavior: 'smooth' });
     // 前に「別の窓に出す」を使っていたら、今回も別の窓で開く
     if (!pipWin && prefs.SegDialogPopout && pipSupported()) popOutSegDialog();
   }
@@ -1957,7 +1958,7 @@
   // ------------------------------------------------------------------
   const groups = [el.grpLyric, el.grpBg, $('grpAdjust'), $('grpExport')];
   const groupKeys = ['lyric', 'bg', 'adjust', 'export'];
-  const collapsedPref = Object.assign({ lyric: false, bg: false, adjust: true, export: true }, prefs.Collapsed || {});
+  const collapsedPref = Object.assign({ lyric: false, bg: false, adjust: false, export: true }, prefs.Collapsed || {});
   groups.forEach((g, i) => {
     g.classList.toggle('collapsed', !!collapsedPref[groupKeys[i]]);
     g.querySelector('h2').addEventListener('click', () => {
@@ -1985,14 +1986,24 @@
     const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
     const mobile = w < 900 || (coarse && Math.min(w, h) < 600);
     const landscape = w > h;
+    const split = mobile && !landscape;          // スマホの縦向き：3 段に分ける
     document.body.classList.toggle('mobile', mobile);
     document.body.classList.toggle('landscape', mobile && landscape);
+    document.body.classList.toggle('split', split);
     if (mobile) {
-      // プレビューの高さ：歌詞動画の縦横比に合わせて、入るかぎり大きく
+      // プレビューの高さ：歌詞動画の縦横比に合わせて、入るかぎり大きく（3 段のときは中段・下段の場所を残す）
       const a = lyric ? lyric.width / lyric.height : 16 / 9;
       const pw = landscape ? w * 0.6 : w;
-      const maxH = landscape ? h * 0.8 : h * (a < 1 ? 0.62 : 0.45);
+      const maxH = landscape ? h * 0.8 : split ? h * (a < 1 ? 0.42 : 0.36) : h * (a < 1 ? 0.62 : 0.45);
       document.body.style.setProperty('--pvh', Math.round(Math.max(120, Math.min(pw / a, maxH))) + 'px');
+    }
+    // 区間の設定の置き場所：3 段のときは下段（設定の欄）のいちばん上、それ以外は画面の上に浮かべる
+    const dlg = el.segDialog;
+    if (!dlg.classList.contains('inPip')) {
+      const want = split ? $('left') : document.body;
+      if (dlg.parentNode !== want) {
+        if (split) want.prepend(dlg); else want.append(dlg);
+      }
     }
     el.btnFull.textContent = document.body.classList.contains('full') ? (mobile ? '全画面を終了' : '全画面を終了（Esc）') : (mobile ? '⛶ 全画面' : '⛶ 全画面（F11）');
     drawSegBar();
