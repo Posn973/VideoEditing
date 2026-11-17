@@ -1990,11 +1990,11 @@
     document.body.classList.toggle('mobile', mobile);
     document.body.classList.toggle('landscape', mobile && landscape);
     document.body.classList.toggle('split', split);
-    if (mobile) {
-      // プレビューの高さ：歌詞動画の縦横比に合わせて、入るかぎり大きく（3 段のときは中段・下段の場所を残す）
+    if (mobile && !split) {
+      // プレビューの高さ（3 段のときは CSS で画面の 1/3 に固定するので、ここでは決めない）：歌詞動画の縦横比に合わせて、入るかぎり大きく（3 段のときは中段・下段の場所を残す）
       const a = lyric ? lyric.width / lyric.height : 16 / 9;
       const pw = landscape ? w * 0.6 : w;
-      const maxH = landscape ? h * 0.8 : split ? h * (a < 1 ? 0.42 : 0.36) : h * (a < 1 ? 0.62 : 0.45);
+      const maxH = landscape ? h * 0.8 : h * (a < 1 ? 0.62 : 0.45);
       document.body.style.setProperty('--pvh', Math.round(Math.max(120, Math.min(pw / a, maxH))) + 'px');
     }
     // 区間の設定の置き場所：3 段のときは下段（設定の欄）のいちばん上、それ以外は画面の上に浮かべる

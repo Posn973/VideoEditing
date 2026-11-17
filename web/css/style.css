@@ -204,22 +204,23 @@ body.mobile .spin { flex: none; }
      中段：時間・区間のボタン・再生などのボタン（横に入りきらない行は左右にスワイプ）
      下段：区間の設定・③ 調整（ほかに ①② ファイル・④ 書き出し）
    ================================================================== */
-body.split { height: 100dvh; overflow: hidden; }
-html:has(body.split) { height: 100dvh; overflow: hidden; }
-body.split #app { display: flex; flex-direction: column; height: 100dvh; }
+/* 3 段は画面いっぱいに固定し、高さは均等（1/3 ずつ）。動くのは中段・下段の中身だけ */
+body.split { height: 100dvh; overflow: hidden; overscroll-behavior: none; }
+html:has(body.split) { height: 100dvh; overflow: hidden; overscroll-behavior: none; }
+body.split #app { display: flex; flex-direction: column; position: fixed; left: 0; right: 0; top: 0; height: 100dvh; overflow: hidden; }
 body.split #right { display: contents; }
-body.split #previewHost { order: 0; position: relative; flex: none; height: var(--pvh, 34dvh); }
+body.split #previewHost { order: 0; position: relative; box-sizing: border-box; flex: none; min-height: 0; height: calc(100dvh / 3); max-height: none; }
 body.split #bottom {
-  order: 1; flex: none; max-height: 38dvh; overflow-y: auto; overflow-x: hidden;
+  order: 1; box-sizing: border-box; flex: none; min-height: 0; height: calc(100dvh / 3); max-height: none; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
   padding: 2px 6px 4px; border-bottom: 2px solid #b8c4d0; background: #f0f0f0;
 }
 body.split #left {
-  order: 2; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: auto;
+  order: 2; box-sizing: border-box; flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: auto; overscroll-behavior: contain;
   display: flex; flex-direction: column; padding: 6px 8px 16px; -webkit-overflow-scrolling: touch;
 }
 /* 中段：横に入りきらない行は左右にスワイプ */
 body.split #segRow, body.split #playRow, body.split #viewRow {
-  flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
+  flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; overscroll-behavior-x: contain;
   justify-content: flex-start; margin: 3px 0; padding-bottom: 2px;
 }
 body.split #segRow > *, body.split #playRow > *, body.split #viewRow > * { flex: none; }
