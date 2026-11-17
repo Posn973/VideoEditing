@@ -115,3 +115,83 @@ body.pip { margin: 0; background: #fff; }
 .spinBtn { width: 26px; height: 28px; padding: 0; font-size: 11px; line-height: 1; color: #333; }
 .spin input[type=number] { width: 62px; }
 #sdStart, #sdEnd { width: 76px; }
+
+/* ==================================================================
+   スマホ・タブレット（body.mobile は app.js が画面の大きさで付ける）
+   ================================================================== */
+.group h2 .sum { display: none; }
+body.mobile { height: auto; font-size: 15px; }
+html:has(body.mobile) { height: auto; }
+body.mobile #app { display: flex; flex-direction: column; height: auto; }
+body.mobile #right { display: block; padding: 0; order: -1; }   /* プレビューを上に */
+body.mobile #previewHost {
+  position: sticky; top: 0; z-index: 30; flex: none; min-height: 0;
+  height: var(--pvh, 40vh); box-shadow: 0 2px 6px rgba(0,0,0,.35);
+}
+body.mobile #previewMsg { font-size: 14px; }
+body.mobile #bottom { padding: 4px 8px 6px; }
+body.mobile #left { width: auto; overflow: visible; padding: 4px 8px 24px; }
+body.mobile .group { padding: 4px 12px 8px; margin-bottom: 8px; }
+body.mobile .group h2 {
+  display: flex; align-items: baseline; gap: 8px; margin: 0; padding: 8px 0; font-size: 15px;
+  cursor: pointer; user-select: none;
+}
+body.mobile .group h2 .ttl { flex: none; }
+body.mobile .group h2 .sum {
+  display: block; flex: 1; min-width: 0; color: #666; font-weight: normal; font-size: 12px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right;
+}
+body.mobile .group h2::after { content: '▾'; color: #0b4f8a; flex: none; }
+body.mobile .group.collapsed h2::after { content: '▸'; }
+body.mobile .group.collapsed > :not(h2) { display: none !important; }
+body.mobile .group:not(.collapsed) h2 .sum { display: none; }
+
+/* 指で押しやすく */
+body.mobile button { min-height: 40px; }
+body.mobile input[type=text], body.mobile input[type=number], body.mobile select { min-height: 38px; font-size: 15px; }
+body.mobile input[type=range] { height: 30px; }
+body.mobile .spinBtn { width: 40px; height: 40px; font-size: 13px; }
+body.mobile .spin input[type=number] { width: 64px; }
+body.mobile #segBar { height: 30px; }
+body.mobile #trkTime { margin: 6px 0 2px; }
+body.mobile .row { flex-wrap: wrap; }
+body.mobile .row.between { flex-wrap: nowrap; }
+body.mobile #segRow { gap: 4px; }
+body.mobile #segRow button { flex: 1 1 30%; padding: 4px 6px; }
+body.mobile #lblSegInfo { flex-basis: 100%; margin-left: 0; white-space: normal; }
+body.mobile .row > span.info { white-space: normal; }
+body.mobile #app, body.mobile #left, body.mobile #bottom { max-width: 100vw; overflow-x: clip; }   /* hidden だとプレビューの固定表示が効かなくなる */
+body.mobile #playRow { justify-content: center; }
+body.mobile #playRow button.step { width: 48px; height: 44px; }
+body.mobile #playRow button.play { width: 110px; height: 44px; }
+body.mobile #lblTime { min-width: 0; flex-basis: 100%; text-align: center; margin: 0; }
+body.mobile #playRow .grp { flex-basis: 100%; justify-content: center; }
+body.mobile #trkVolume { flex: 1; max-width: 220px; }
+body.mobile #lblHint { display: none; }
+body.mobile #lblPlayInfo { flex-basis: 100%; font-size: 11px; }
+body.mobile #viewRow { gap: 10px; }
+body.mobile .footer { padding: 4px 8px 16px; }
+
+/* 区間の設定：画面の下から出るパネル */
+body.mobile #segDialog:not(.inPip) {
+  position: fixed; left: 0 !important; right: 0 !important; bottom: 0; top: auto !important; transform: none !important;
+  width: auto; max-height: 52vh; border-radius: 12px 12px 0 0; z-index: 60;
+}
+body.mobile #segDialog:not(.inPip) .dlgTitle { cursor: default; border-radius: 11px 11px 0 0; }
+body.mobile .floating.center { width: 92vw; }
+body.mobile .menu div { padding: 10px 18px; }
+
+/* 横向き：左にプレビュー、右に設定 */
+body.mobile.landscape #app { display: flex; flex-direction: row; height: 100vh; }
+body.mobile.landscape #right { width: 60%; height: 100vh; overflow-y: auto; }
+body.mobile.landscape #left { width: 40%; height: 100vh; overflow-y: auto; padding-top: 8px; }
+body.mobile.landscape #segDialog:not(.inPip) {
+  left: auto !important; right: 0 !important; top: 0 !important; bottom: 0; width: 40%; max-height: none; border-radius: 0;
+}
+body.mobile.landscape #segDialog:not(.inPip) .dlgTitle { border-radius: 0; }
+
+/* 全画面 */
+body.full #previewHost { position: static; height: 100vh !important; box-shadow: none; }
+body.mobile.full #right { width: 100%; height: 100vh; }
+body.mobile .row.between > span:first-child { white-space: normal; flex: 1; min-width: 0; }
+body.mobile .spin { flex: none; }

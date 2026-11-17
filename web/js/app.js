@@ -118,6 +118,7 @@
   function setSlider(trk, nud, v) { v = clamp(v, +trk.min, +trk.max); trk.value = v; nud.value = v; }
 
   function onAdjustChanged() {
+    if (typeof updateSummaries === 'function') updateSummaries();
     rebuildTimeline();
     updateSegInfo();
     requestComposite();
@@ -224,6 +225,8 @@
     el.lblLyricInfo.textContent = m.infoText();
     const base = file.name.replace(/\.[^.]+$/, '');
     if (!el.txtOut.dataset.edited) el.txtOut.value = base + '_合成.mp4';
+    updateLayout();
+    updateSummaries();
     // 区間は歌詞動画ごとのものなので、別の動画にしたら消す
     segments.length = 0; selectedSeg = null; markStart = markEnd = null; segmentsDirty = false;
     closeSegDialog(false);
@@ -260,6 +263,7 @@
     el.txtBg.value = file.name;
     el.txtBg.title = file.name;
     updateBackgroundNote();
+    updateSummaries();
     savePrefsSoon();
     updateButtons();
     requestPreview(true);
@@ -806,7 +810,7 @@
   function toggleFullScreen() {
     const full = !document.body.classList.contains('full');
     document.body.classList.toggle('full', full);
-    el.btnFull.textContent = full ? '全画面を終了（Esc）' : '⛶ 全画面（F11）';
+    updateLayout();
     try {
       if (full && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => { });
       if (!full && document.fullscreenElement) document.exitFullscreen().catch(() => { });
@@ -816,7 +820,7 @@
   document.addEventListener('fullscreenchange', () => {
     if (!document.fullscreenElement && document.body.classList.contains('full')) {
       document.body.classList.remove('full');
-      el.btnFull.textContent = '⛶ 全画面（F11）';
+      updateLayout();
     }
   });
   el.previewHost.addEventListener('dblclick', () => { if (lyric) toggleFullScreen(); });
@@ -1768,6 +1772,61 @@
   function updateSpinButtons() { for (const [b, nud] of spinButtons) b.disabled = nud.disabled; }
 
   // ------------------------------------------------------------------
+  // スマホ・タブレット用の配置
+  //   縦向き：上にプレビュー（固定）、下に操作と設定
+  //   横向き：左にプレビュー、右に設定
+  //   設定の ①～④ はタップで開いたり閉じたりできる
+  // ------------------------------------------------------------------
+  const groups = [el.grpLyric, el.grpBg, $('grpAdjust'), $('grpExport')];
+  const groupKeys = ['lyric', 'bg', 'adjust', 'export'];
+  const collapsedPref = Object.assign({ lyric: false, bg: false, adjust: true, export: true }, prefs.Collapsed || {});
+  groups.forEach((g, i) => {
+    g.classList.toggle('collapsed', !!collapsedPref[groupKeys[i]]);
+    g.querySelector('h2').addEventListener('click', () => {
+      if (!document.body.classList.contains('mobile')) return;
+      g.classList.toggle('collapsed');
+      collapsedPref[groupKeys[i]] = g.classList.contains('collapsed');
+      prefs.Collapsed = collapsedPref;
+      savePrefsSoon();
+    });
+  });
+
+  /** 閉じた欄の見出しに出す、今の値のまとめ */
+  function updateSummaries() {
+    $('sumLyric').textContent = lyric ? lyric.name : '未選択';
+    $('sumBg').textContent = bg ? bg.name : '未選択';
+    $('sumAdjust').textContent = `抜き具合 ${el.trkKey.value}・縁取り ${el.trkOutline.value}・粒 ${el.trkNoise.value}`;
+    $('sumExport').textContent = el.cmbQuality.selectedOptions[0] ? el.cmbQuality.selectedOptions[0].text.replace(/（.*/, '') : '';
+  }
+  for (const c of [el.trkKey, el.trkOutline, el.trkNoise, el.nudKey, el.nudOutline, el.nudNoise, el.cmbQuality])
+    c.addEventListener(c.tagName === 'SELECT' ? 'change' : 'input', updateSummaries);
+  for (const c of [el.nudKey, el.nudOutline, el.nudNoise]) c.addEventListener('change', updateSummaries);
+
+  function updateLayout() {
+    const w = window.innerWidth, h = window.innerHeight;
+    const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+    const mobile = w < 900 || (coarse && Math.min(w, h) < 600);
+    const landscape = w > h;
+    document.body.classList.toggle('mobile', mobile);
+    document.body.classList.toggle('landscape', mobile && landscape);
+    if (mobile) {
+      // プレビューの高さ：歌詞動画の縦横比に合わせて、入るかぎり大きく
+      const a = lyric ? lyric.width / lyric.height : 16 / 9;
+      const pw = landscape ? w * 0.6 : w;
+      const maxH = landscape ? h * 0.8 : h * (a < 1 ? 0.62 : 0.45);
+      document.body.style.setProperty('--pvh', Math.round(Math.max(120, Math.min(pw / a, maxH))) + 'px');
+    }
+    el.btnFull.textContent = document.body.classList.contains('full') ? (mobile ? '全画面を終了' : '全画面を終了（Esc）') : (mobile ? '⛶ 全画面' : '⛶ 全画面（F11）');
+    drawSegBar();
+  }
+  window.addEventListener('resize', updateLayout);
+  window.addEventListener('orientationchange', () => setTimeout(updateLayout, 200));
+
+  // スマホなどで使えない機能は隠す
+  if (!window.documentPictureInPicture) sdPopout.hidden = true;
+  if (!window.showDirectoryPicker) $('rowOutSameDir').hidden = true;
+
+  // ------------------------------------------------------------------
   // このアプリについて・動作環境
   // ------------------------------------------------------------------
   function openHelp(anchor = '') { window.open('help.html' + anchor, '_blank', 'noopener'); }
@@ -1805,6 +1864,8 @@
   }
 
   applySavedPrefs();
+  updateLayout();
+  updateSummaries();
   updateBaseTooltip();
   rebuildTimeline();
   refreshSegmentUi();

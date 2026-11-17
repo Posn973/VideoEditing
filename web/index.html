@@ -12,7 +12,7 @@
   <!-- 左側：設定 -->
   <aside id="left">
     <section class="group" id="grpLyric">
-      <h2>① 歌詞動画（文字・効果）</h2>
+      <h2><span class="ttl">① 歌詞動画（文字・効果）</span><span class="sum" id="sumLyric"></span></h2>
       <div class="row">
         <input type="text" id="txtLyric" readonly placeholder="ファイルを選んでください">
         <button id="btnLyric">参照...</button>
@@ -21,7 +21,7 @@
     </section>
 
     <section class="group" id="grpBg">
-      <h2>② 背景</h2>
+      <h2><span class="ttl">② 背景</span><span class="sum" id="sumBg"></span></h2>
       <div class="row">
         <label><input type="radio" name="bgType" id="rbBgImage" checked> 画像</label>
         <label><input type="radio" name="bgType" id="rbBgVideo"> 動画</label>
@@ -35,7 +35,7 @@
     </section>
 
     <section class="group" id="grpAdjust">
-      <h2>③ 調整（全体・区間の外）</h2>
+      <h2><span class="ttl">③ 調整（全体・区間の外）</span><span class="sum" id="sumAdjust"></span></h2>
       <div class="sliderBlock" data-key="KeyThreshold">
         <div class="row between"><span>背景の抜き具合（0～400）</span><input type="number" min="0" max="400" value="83" id="nudKey"></div>
         <input type="range" min="0" max="400" value="83" id="trkKey">
@@ -68,7 +68,7 @@
     </section>
 
     <section class="group" id="grpExport">
-      <h2>④ 書き出し</h2>
+      <h2><span class="ttl">④ 書き出し</span><span class="sum" id="sumExport"></span></h2>
       <div class="row">
         <span>画質</span>
         <select id="cmbQuality">
@@ -81,7 +81,7 @@
         <span>ファイル名</span>
         <input type="text" id="txtOut" placeholder="合成.mp4">
       </div>
-      <div class="row">
+      <div class="row" id="rowOutSameDir">
         <label title="オン：保存の画面を出さずに、歌詞動画と同じフォルダーへ書き出します（フォルダーごとに最初の 1 回だけ確認があります）&#10;オフ：書き出すときに保存先を選びます"><input type="checkbox" id="chkOutSameDir" checked> 歌詞動画と同じフォルダーに保存する</label>
       </div>
       <div class="row">
@@ -147,7 +147,7 @@
         <label><input type="radio" name="view" id="rbViewBg"> 背景</label>
         <button id="btnFull">⛶ 全画面（F11）</button>
         <button id="btnHelp" title="使い方の説明を開きます（F1）">？ ヘルプ</button>
-        <span class="hint">（再生中も調整を変えるとすぐ反映されます）</span>
+        <span class="hint" id="lblHint">（再生中も調整を変えるとすぐ反映されます）</span>
         <span id="lblPlayInfo" class="info"></span>
       </div>
     </div>
