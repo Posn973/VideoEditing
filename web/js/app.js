@@ -1202,6 +1202,7 @@
     for (const n of [el.sdStart, el.sdEnd]) { n.max = lyric.duration.toFixed(2); n.step = step; }
     loadDialogValues(seg);
     el.segDialog.hidden = false;
+    updateLayout();
     if (document.body.classList.contains('split')) $('left').scrollTo({ top: 0, behavior: 'smooth' });
     // 前に「別の窓に出す」を使っていたら、今回も別の窓で開く
     if (!pipWin && prefs.SegDialogPopout && pipSupported()) popOutSegDialog();
@@ -1986,7 +1987,8 @@
     const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
     const mobile = w < 900 || (coarse && Math.min(w, h) < 600);
     const landscape = w > h;
-    const split = mobile && !landscape;          // スマホの縦向き：3 段に分ける
+    // スマホの縦向きで「区間の設定」を開いている間だけ 3 段に分ける（別の窓に出しているときは分けない）
+    const split = mobile && !landscape && !el.segDialog.hidden && !el.segDialog.classList.contains('inPip');
     document.body.classList.toggle('mobile', mobile);
     document.body.classList.toggle('landscape', mobile && landscape);
     document.body.classList.toggle('split', split);
@@ -2009,6 +2011,8 @@
     drawSegBar();
   }
   window.addEventListener('resize', updateLayout);
+  // 区間の設定を開く・閉じる・別の窓に出す・戻すたびに、3 段にするかどうかを決め直す
+  new MutationObserver(() => updateLayout()).observe(el.segDialog, { attributes: true, attributeFilter: ['hidden', 'class'] });
   window.addEventListener('orientationchange', () => setTimeout(updateLayout, 200));
 
   // スマホなどで使えない機能は隠す
