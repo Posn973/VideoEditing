@@ -31,11 +31,11 @@
 
   // 1) 背景色との差から不透明度
   const FS_ALPHA = HEAD + `
-  uniform sampler2D uFg; uniform sampler2D uEst; uniform float uD0; uniform float uSoft;
+  uniform sampler2D uFg; uniform sampler2D uEst; uniform float uEstScale; uniform float uD0; uniform float uSoft;
   void main() {
     ivec2 p = P();
     vec3 f = texelFetch(uFg, p, 0).rgb * 255.0;
-    vec3 b = texture(uEst, (vec2(p) + 0.5) / vec2(uSize)).rgb * 255.0;
+    vec3 b = texture(uEst, (vec2(p) + 0.5) / vec2(uSize)).rgb * uEstScale;
     float a = (length(f - b) - uD0) / uSoft;
     o = vec4(clamp(a, 0.0, 1.0), 0.0, 0.0, 1.0);
   }`;
@@ -111,7 +111,7 @@
 
   // 3) 文字マスクと輝度（前景色を取り出して計算）
   const FS_MASKLUM = HEAD + `
-  uniform sampler2D uA; uniform sampler2D uFg; uniform sampler2D uEst;
+  uniform sampler2D uA; uniform sampler2D uFg; uniform sampler2D uEst; uniform float uEstScale;
   void main() {
     ivec2 p = P();
     float a = texelFetch(uA, p, 0).r;
@@ -119,7 +119,7 @@
     vec3 f = texelFetch(uFg, p, 0).rgb * 255.0;
     vec3 c = f;
     if (a <= 0.85) {
-      vec3 b = texture(uEst, (vec2(p) + 0.5) / vec2(uSize)).rgb * 255.0;
+      vec3 b = texture(uEst, (vec2(p) + 0.5) / vec2(uSize)).rgb * uEstScale;
       c = clamp(b + (f - b) / max(a, 0.05), 0.0, 255.0);
     }
     float lum = (0.114 * c.b + 0.587 * c.g + 0.299 * c.r) / 255.0;
@@ -182,7 +182,7 @@
 
   // 4) 背景 → 縁取り → 前景の順に重ねて、画面に描く
   const FS_FINAL = HEAD + `
-  uniform sampler2D uFg; uniform sampler2D uBg; uniform sampler2D uEst; uniform sampler2D uA;
+  uniform sampler2D uFg; uniform sampler2D uBg; uniform sampler2D uEst; uniform float uEstScale; uniform sampler2D uA;
   uniform sampler2D uD; uniform sampler2D uL; uniform ivec2 uHalf;
   uniform float uRadius; uniform int uMode; uniform vec3 uFix; uniform int uView;
   void main() {
@@ -212,12 +212,47 @@
     if (a > 0.0) {
       vec3 fc = f;
       if (a <= 0.85) {
-        vec3 b = texture(uEst, (vec2(p) + 0.5) / vec2(uSize)).rgb * 255.0;
+        vec3 b = texture(uEst, (vec2(p) + 0.5) / vec2(uSize)).rgb * uEstScale;
         fc = clamp(b + (f - b) / max(a, 0.05), 0.0, 255.0);
       }
       col = col * (1.0 - a) + fc * a;
     }
     o = vec4(col / 255.0, 1.0);
+  }`;
+
+  // ---- 背景色の推定（GPU）：縮小したコマ（横 240）で、一番多い色を基準にゆるやかな色の変化も追う ----
+  // （compositor.js の estimateBackground と同じ手順。一番多い色だけは CPU で求める）
+  const FS_EPACK = HEAD + `
+  uniform sampler2D uSm; uniform sampler2D uPrev; uniform int uFirst; uniform vec3 uMode;
+  void main() {
+    ivec2 p = P();
+    vec3 c = texelFetch(uSm, p, 0).rgb * 255.0;
+    float m;
+    if (uFirst == 1) m = length(c - uMode) < 45.0 ? 1.0 : 0.0;
+    else m = texelFetch(uPrev, p, 0).a;
+    o = vec4(c * m, m);
+  }`;
+  const FS_EBLUR = HEAD + `
+  uniform sampler2D uS; uniform ivec2 uDir; uniform float uK[49];
+  int refl(int i, int n) { if (n == 1) return 0; for (int t = 0; t < 8; t++) { if (i < 0) i = -i; if (i >= n) i = 2 * n - 2 - i; } return clamp(i, 0, n - 1); }
+  void main() {
+    ivec2 p = P(); vec4 acc = texelFetch(uS, p, 0) * uK[0];
+    for (int k = 1; k < 49; k++) {
+      ivec2 a = p - uDir * k, b = p + uDir * k;
+      a = ivec2(refl(a.x, uSize.x), refl(a.y, uSize.y));
+      b = ivec2(refl(b.x, uSize.x), refl(b.y, uSize.y));
+      acc += (texelFetch(uS, a, 0) + texelFetch(uS, b, 0)) * uK[k];
+    }
+    o = acc;
+  }`;
+  const FS_EEST = HEAD + `
+  uniform sampler2D uB; uniform sampler2D uSm; uniform vec3 uMode;
+  void main() {
+    ivec2 p = P();
+    vec4 v = texelFetch(uB, p, 0);
+    vec3 e = v.a > 0.02 ? v.rgb / max(v.a, 1e-4) : uMode;
+    vec3 c = texelFetch(uSm, p, 0).rgb * 255.0;
+    o = vec4(e, length(c - e) < 14.0 ? 1.0 : 0.0);     // rgb = 推定した背景色（0～255）、a = 背景と判定したか
   }`;
 
   function gaussian(sigma) {
@@ -227,6 +262,7 @@
     return k.map(v => v / sum).slice(c);   // 中心から片側（9 個）
   }
   const K2 = gaussian(2.0);
+  const K12 = gaussian(12.0);    // 片側 49 個
 
   class GpuCompositor {
     /** canvas に WebGL2 で描く。使えないときは例外 */
@@ -236,9 +272,19 @@
       this.gl = gl;
       this.canvas = canvas;
       this.progs = {};
-      for (const [name, fs] of Object.entries({ resample: FS_RESAMPLE, alpha: FS_ALPHA, erode: FS_ERODE, dilate: FS_DILATE, hsum: FS_HSUM, keep: FS_KEEP, apply: FS_APPLY, masklum: FS_MASKLUM, edtv: FS_EDTV, edth: FS_EDTH, half: FS_HALF, blur: FS_BLUR, final: FS_FINAL }))
+      for (const [name, fs] of Object.entries({ epack: FS_EPACK, eblur: FS_EBLUR, eest: FS_EEST, resample: FS_RESAMPLE, alpha: FS_ALPHA, erode: FS_ERODE, dilate: FS_DILATE, hsum: FS_HSUM, keep: FS_KEEP, apply: FS_APPLY, masklum: FS_MASKLUM, edtv: FS_EDTV, edth: FS_EDTH, half: FS_HALF, blur: FS_BLUR, final: FS_FINAL }))
         this.progs[name] = this.program(fs);
       this.vao = gl.createVertexArray();
+      // 背景色の推定を GPU で行うには、小数の値を書き込める必要がある
+      this.floatOk = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
+      if (this.floatOk) {
+        try {
+          const t = this.target(4, 4, true);
+          this.floatOk = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+          gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fb);
+        } catch { this.floatOk = false; }
+      }
+      this.estScale = 255;
       this.w = this.h = 0;
       this.srcFg = this.newTex(true);
       this.srcBg = this.newTex(true);
@@ -282,10 +328,11 @@
       return t;
     }
 
-    target(w, h) {
+    target(w, h, float = false, linear = false) {
       const gl = this.gl;
-      const tex = this.newTex(false, false);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      const tex = this.newTex(false, linear);
+      if (float) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
+      else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
       const fb = gl.createFramebuffer();
       gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
@@ -332,7 +379,7 @@
           else if (v.length === 2 && Number.isInteger(v[0]) && k !== 'uRect') gl.uniform2i(l, v[0], v[1]);
           else if (v.length === 3) gl.uniform3f(l, v[0], v[1], v[2]);
           else if (v.length === 4) gl.uniform4f(l, v[0], v[1], v[2], v[3]);
-        } else if (k === 'uR' || k === 'uMaxR' || k === 'uMode' || k === 'uView') gl.uniform1i(l, v);
+        } else if (k === 'uR' || k === 'uMaxR' || k === 'uMode' || k === 'uView' || k === 'uFirst') gl.uniform1i(l, v);
         else gl.uniform1f(l, v);
       }
       gl.bindVertexArray(this.vao);
@@ -386,11 +433,90 @@
       });
     }
 
-    /** 背景色の推定（sw×sh の RGBA）を入れる */
+    /** 背景色の推定（sw×sh の RGBA）を入れる（計算スレッドで推定したとき） */
     setEstimate(rgba, sw, sh) {
       const gl = this.gl;
       gl.bindTexture(gl.TEXTURE_2D, this.est);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sw, sh, 0, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
+      this.curEst = this.est;
+      this.estScale = 255;
+    }
+
+    // ---- 背景色の推定を GPU で行う ----
+    // コマごとに「枠」を 1 つ使う（合成するまで結果を取っておくため、いくつかを順番に使い回す）
+    prepareEstimate(ew, eh, slots = 8) {
+      const gl = this.gl;
+      if (this.eSlots && this.ew === ew && this.eh === eh) return;
+      const del = t => { gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fb); };
+      if (this.eSlots) { for (const sl of this.eSlots) { del(sl.sm); del(sl.est); } del(this.eA); del(this.eB); del(this.eC); }
+      this.ew = ew; this.eh = eh;
+      this.eSlots = [];
+      for (let i = 0; i < slots; i++) this.eSlots.push({ sm: this.target(ew, eh), est: this.target(ew, eh, true, true) });
+      this.eA = this.target(ew, eh, true); this.eB = this.target(ew, eh, true); this.eC = this.target(ew, eh, true);
+      this.eNext = 0;
+    }
+
+    /**
+     * コマ fg の背景色を GPU で推定する。戻り値の Promise は、推定が終わった枠（slot）を返す。
+     * 一番多い色だけは CPU で求めるので、縮小したコマを読み出す（GPU を待たずに予約して読む）。
+     */
+    estimateOnGpu(fg) {
+      const ew = this.ew, eh = this.eh;
+      const slot = this.eSlots[this.eNext];
+      this.eNext = (this.eNext + 1) % this.eSlots.length;
+      this.upload(this.srcSmall || (this.srcSmall = this.newTex(true)), fg, true);
+      this.pass('resample', slot.sm, { uRect: [0, 0, 1, 1] }, { uSrc: this.srcSmall });
+      return this.readAsync(slot.sm, ew, eh).then(px => {
+        // 一番多い色（16 段階に量子化。並びは compositor.js と同じ）
+        const n = ew * eh, hist = new Int32Array(4096);
+        const key = i => ((px[i + 2] >> 4) << 8) | ((px[i + 1] >> 4) << 4) | (px[i] >> 4);
+        for (let i = 0; i < n * 4; i += 4) hist[key(i)]++;
+        let mode = 0;
+        for (let i = 1; i < 4096; i++) if (hist[i] > hist[mode]) mode = i;
+        let r = 0, g = 0, b = 0, c = 0;
+        for (let i = 0; i < n * 4; i += 4) if (key(i) === mode) { r += px[i]; g += px[i + 1]; b += px[i + 2]; c++; }
+        const m = [r / c, g / c, b / c];
+        // 背景の部分だけで色をなめらかに広げる（3 回くり返す）
+        for (let it = 0; it < 3; it++) {
+          this.pass('epack', this.eA, { uFirst: it === 0 ? 1 : 0, uMode: m }, { uSm: slot.sm.tex, uPrev: slot.est.tex });
+          this.pass('eblur', this.eB, { uDir: [1, 0], uK: K12 }, { uS: this.eA.tex });
+          this.pass('eblur', this.eC, { uDir: [0, 1], uK: K12 }, { uS: this.eB.tex });
+          this.pass('eest', slot.est, { uMode: m }, { uB: this.eC.tex, uSm: slot.sm.tex });
+        }
+        return slot;
+      });
+    }
+
+    /** 推定した枠を、次の合成で使う */
+    useEstimate(slot) { this.curEst = slot.est.tex; this.estScale = 1; }
+
+    /** target の中身を、GPU を待たずに読み出す */
+    readAsync(t, w, h) {
+      const gl = this.gl, size = w * h * 4;
+      const pbo = gl.createBuffer();
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo);
+      gl.bufferData(gl.PIXEL_PACK_BUFFER, size, gl.STREAM_READ);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, t.fb);
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, 0);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+      const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+      gl.flush();
+      return new Promise((resolve, reject) => {
+        const t0 = performance.now();
+        const poll = () => {
+          const st = gl.clientWaitSync(sync, 0, 0);
+          if (st === gl.WAIT_FAILED) { gl.deleteSync(sync); gl.deleteBuffer(pbo); reject(new Error('GPU の読み出しに失敗しました')); return; }
+          if (st === gl.TIMEOUT_EXPIRED && performance.now() - t0 < 1000) { setTimeout(poll, 1); return; }
+          gl.deleteSync(sync);
+          const out = new Uint8Array(size);
+          gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo);
+          gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, out);
+          gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+          gl.deleteBuffer(pbo);
+          resolve(out);
+        };
+        poll();
+      });
     }
 
     static coverRect(sw, sh, w, h) {
@@ -421,12 +547,12 @@
         this.bgImageKey = '__black';
       }
       if (view !== 0) {
-        this.pass('final', null, { uView: view, uRadius: 0, uMode: 1, uFix: [0, 0, 0], uHalf: [this.hw, this.hh] },
-          { uFg: T.fg.tex, uBg: T.bg.tex, uEst: this.est, uA: T.a0.tex, uD: T.dist.tex, uL: T.h2.tex });
+        this.pass('final', null, { uEstScale: this.estScale, uView: view, uRadius: 0, uMode: 1, uFix: [0, 0, 0], uHalf: [this.hw, this.hh] },
+          { uFg: T.fg.tex, uBg: T.bg.tex, uEst: this.curEst || this.est, uA: T.a0.tex, uD: T.dist.tex, uL: T.h2.tex });
         return;
       }
 
-      this.pass('alpha', T.a0, { uD0: s.KeyThreshold, uSoft: Math.max(1, s.KeySoftness) }, { uFg: T.fg.tex, uEst: this.est });
+      this.pass('alpha', T.a0, { uEstScale: this.estScale, uD0: s.KeyThreshold, uSoft: Math.max(1, s.KeySoftness) }, { uFg: T.fg.tex, uEst: this.curEst || this.est });
       this.pass('erode', T.a1, {}, { uA: T.a0.tex });
       this.pass('dilate', T.a2, {}, { uA: T.a1.tex });
       let A = T.a2;
@@ -441,7 +567,7 @@
       const auto = s.OutlineMode === 0;
       if (radius > 0.01) {
         const maxR = Math.min(14, Math.ceil(radius) + 2);
-        this.pass('masklum', T.ml, {}, { uA: A.tex, uFg: T.fg.tex, uEst: this.est });
+        this.pass('masklum', T.ml, { uEstScale: this.estScale }, { uA: A.tex, uFg: T.fg.tex, uEst: this.curEst || this.est });
         this.pass('edtv', T.ev, { uMaxR: maxR }, { uM: T.ml.tex });
         this.pass('edth', T.dist, { uMaxR: maxR }, { uV: T.ev.tex });
         if (auto) {
@@ -457,8 +583,8 @@
         case 4: fix = [s.CustomR, s.CustomG, s.CustomB]; break;
         default: fix = [255, 255, 255];
       }
-      this.pass('final', null, { uView: 0, uRadius: radius, uMode: auto ? 0 : 1, uFix: fix, uHalf: [this.hw, this.hh] },
-        { uFg: T.fg.tex, uBg: T.bg.tex, uEst: this.est, uA: A.tex, uD: T.dist.tex, uL: T.h2.tex });
+      this.pass('final', null, { uEstScale: this.estScale, uView: 0, uRadius: radius, uMode: auto ? 0 : 1, uFix: fix, uHalf: [this.hw, this.hh] },
+        { uFg: T.fg.tex, uBg: T.bg.tex, uEst: this.curEst || this.est, uA: A.tex, uD: T.dist.tex, uL: T.h2.tex });
     }
   }
 

@@ -620,7 +620,8 @@
         a.volume = volumeLevel();
         a.currentTime = this.start;
         this.audio = a;
-        try { await a.play(); } catch { /* 音が出せなくても映像は再生する */ }
+        // 音の再生が始まるのを待つ（途中から再生するときは時間がかかることがあるので、最大 1.5 秒で映像を先に進める）
+        try { await Promise.race([a.play(), sleep(1500)]); } catch { /* 音が出せなくても映像は再生する */ }
         if (this.stopped) { this.stopAudio(); return; }
       }
       this.clockStart = performance.now() - (this.audio && !this.audio.paused ? (this.audio.currentTime - this.start) * 1000 : 0);
@@ -677,6 +678,7 @@
         this.gpu.resize(w, h);
         // 背景色の推定に使う縮小の大きさ（CPU の計算と同じく横 240 まで）
         this.ew = Math.min(240, w); this.eh = Math.max(1, Math.round(h * this.ew / w));
+        if (this.gpu.floatOk) this.gpu.prepareEstimate(this.ew, this.eh, 8);
       }
       const producer = (this.gpu ? this.produceGpu(w, h) : this.produce(w, h))
         .catch(e => { error = error || e; }).finally(() => { this.producerDone = true; this.signal(); });
@@ -721,12 +723,20 @@
           let bgf = null;
           if (bReader) { const b = await bReader.frameAt(t + 1e-4); bgf = b ? b.toVideoFrame() : null; }
           // 背景色の推定は計算スレッドで（縮小したコマを渡す）
-          // 背景色の推定：縮小したコマを GPU で作り（合成と同じ色の変換）、計算スレッドで推定する
+          // 背景色の推定
           let est = null;
           try {
-            const small = this.gpu.shrinkForEstimate(fg, this.ew, this.eh);
-            est = small.then(px => pool.estimate(px, this.ew, this.eh, { key: 'playest', reuse: 8 }));
-          } catch { est = null; }
+            if (this.gpu.floatOk) {
+              // GPU で毎コマ推定する（速いので遅れない）
+              est = this.gpu.estimateOnGpu(fg);
+            } else if (!this.estBusy) {
+              // GPU で推定できないとき：計算スレッドに頼む。前の推定が終わるまでは次を頼まない（仕事がたまらないように）
+              this.estBusy = true;
+              const small = this.gpu.shrinkForEstimate(fg, this.ew, this.eh);
+              est = small.then(px => pool.estimate(px, this.ew, this.eh, { key: 'playest', reuse: 8 }))
+                .finally(() => { this.estBusy = false; });
+            }
+          } catch { est = null; this.estBusy = false; }
           this.stat.read += performance.now() - p0;
           if (this.stopped) { try { fg.close(); } catch { } if (bgf) try { bgf.close(); } catch { } break; }
           const entry = { t, due, fg, bg: bgf, est, ready: !est };
@@ -768,7 +778,11 @@
           if (job.bg) { try { job.bg.close(); } catch { } job.bg = null; }
         };
         if (this.stopped) { close(); return; }
-        if (est) { this.gpu.setEstimate(est, est.sw || this.ew, est.sh || this.eh); this.haveEst = true; this.stat.comp += est.timing ? est.timing.comp : 0; }
+        if (est) {
+          if (est.est) this.gpu.useEstimate(est);                    // GPU で推定した枠
+          else { this.gpu.setEstimate(est, est.sw || this.ew, est.sh || this.eh); this.stat.comp += est.timing ? est.timing.comp : 0; }
+          this.haveEst = true;
+        }
         if (!this.clockRunning) { await this.startClock(); if (this.stopped) { close(); return; } }
         this.syncClock();
         const next = this.q[0];
@@ -796,7 +810,7 @@
           this.fpsWatch = performance.now();
           const st = this.stat, m = Math.max(1, st.made);
           el.lblPlayInfo.textContent = `再生中（GPU）　${this.displayFps.toFixed(0)} コマ/秒（${this.w}×${this.h}）` +
-            `　｜読込 ${(st.read / Math.max(1, m + st.skipped)).toFixed(0)}ms　描画 ${(st.conv / m).toFixed(1)}ms　背景色の推定 ${(st.comp / m).toFixed(0)}ms` +
+            `　｜読込 ${(st.read / Math.max(1, m + st.skipped)).toFixed(0)}ms　描画 ${(st.conv / m).toFixed(1)}ms　${this.gpu.floatOk ? '背景色の推定 GPU' : `背景色の推定 ${(st.comp / m).toFixed(0)}ms`}` +
             `　待ち ${(st.waitedJob / m).toFixed(0)}ms　飛ばし ${st.skipped}`;
           this.stat = { read: 0, conv: 0, comp: 0, made: 0, skipped: 0, waitedJob: 0 };
           updateSegInfo();
@@ -919,6 +933,8 @@
     if (!lyric || player || exporting) return;
     let start = curTime;
     if (start >= lastFrameTime() - 1.5 / fps()) start = 0;   // 最後まで行っていたら最初から
+    // 止まっているときの表示用に開いている動画の読み込みを閉じる（スマホは同時に使える動画の読み込みの数が少ないため）
+    closeStillReaders();
     const pl = new Player(start);
     player = pl;
     el.btnPlay.textContent = '■ 停止';
