@@ -295,3 +295,22 @@ body.split.full #previewHost { height: calc(100dvh - 60px) !important; }
   pointer-events: none; white-space: nowrap; transition: opacity .4s;
 }
 #fullHint.fade { opacity: 0; }
+
+/* スマホの縦向き（ふだんの画面）のボタンの並び（上から）：
+   区間を読み込み → 区間の設定・削除・保存 → ここから・ここまで・区間を追加 → シークバー・区間のバー → ≪ ＜ 再生 ＞ ≫
+   区間の情報（今の位置）はこの画面では出さない */
+body.mobile:not(.landscape):not(.split) #bottom { display: flex; flex-direction: column; }
+body.mobile:not(.landscape):not(.split) #segRow { order: 1; margin-top: 2px; }
+body.mobile:not(.landscape):not(.split) #trkTime { order: 2; }
+body.mobile:not(.landscape):not(.split) #segBar { order: 3; }
+body.mobile:not(.landscape):not(.split) #playRow { order: 4; margin-top: 6px; }
+body.mobile:not(.landscape):not(.split) #viewRow { order: 5; }
+body.mobile:not(.landscape):not(.split) #lblPlayInfo { order: 6; }
+body.mobile:not(.landscape):not(.split) #lblSegInfo { display: none; }
+body.mobile:not(.landscape):not(.split) #btnLoadSeg { order: 1; flex-basis: 100%; }
+body.mobile:not(.landscape):not(.split) #btnEditSeg,
+body.mobile:not(.landscape):not(.split) #btnDelSeg,
+body.mobile:not(.landscape):not(.split) #btnSaveSeg { order: 2; }
+body.mobile:not(.landscape):not(.split) #btnMarkStart,
+body.mobile:not(.landscape):not(.split) #btnMarkEnd,
+body.mobile:not(.landscape):not(.split) #btnAddSeg { order: 3; }
