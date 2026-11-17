@@ -678,7 +678,7 @@
         this.gpu.resize(w, h);
         // 背景色の推定に使う縮小の大きさ（CPU の計算と同じく横 240 まで）
         this.ew = Math.min(240, w); this.eh = Math.max(1, Math.round(h * this.ew / w));
-        if (this.gpu.floatOk) this.gpu.prepareEstimate(this.ew, this.eh, 8);
+        if (this.gpu.floatOk) this.gpu.prepareEstimate(this.ew, this.eh, 12);
       }
       const producer = (this.gpu ? this.produceGpu(w, h) : this.produce(w, h))
         .catch(e => { error = error || e; }).finally(() => { this.producerDone = true; this.signal(); });
@@ -740,7 +740,11 @@
           this.stat.read += performance.now() - p0;
           if (this.stopped) { try { fg.close(); } catch { } if (bgf) try { bgf.close(); } catch { } break; }
           const entry = { t, due, fg, bg: bgf, est, ready: !est };
-          if (est) est.then(() => { entry.ready = true; }, () => { entry.ready = true; });
+          if (est) est.then(r => {
+            entry.ready = true;
+            // 終わった中でいちばん新しい推定を覚えておく（表示に間に合わなかったコマの推定も捨てずに使う）
+            if (r && (this.latestEstT === undefined || t >= this.latestEstT)) { this.latestEst = r; this.latestEstT = t; this.latestEstUsed = false; }
+          }, () => { entry.ready = true; });
           this.q.push(entry);
           this.signal();
         }
@@ -778,7 +782,10 @@
           if (job.bg) { try { job.bg.close(); } catch { } job.bg = null; }
         };
         if (this.stopped) { close(); return; }
+        // このコマの推定が間に合わなかったときは、終わった中でいちばん新しい推定を使う
+        if (!est && this.latestEst && !this.latestEstUsed) est = this.latestEst;
         if (est) {
+          if (est === this.latestEst) this.latestEstUsed = true;
           if (est.est) this.gpu.useEstimate(est);                    // GPU で推定した枠
           else { this.gpu.setEstimate(est, est.sw || this.ew, est.sh || this.eh); this.stat.comp += est.timing ? est.timing.comp : 0; }
           this.haveEst = true;
@@ -955,7 +962,8 @@
     pool.clear('play');
     curTime = clamp(frameIndexOf(pl.position), 0, lastFrameIndex()) / fps();
     el.btnPlay.textContent = '▶ 再生';
-    el.lblPlayInfo.textContent = '';
+    // 止めた位置は正確な計算で表示し直す（スマホでは数秒かかることがあるので、そのことを表示する）
+    el.lblPlayInfo.textContent = refreshStill ? '止めた位置を正確な計算で表示し直しています...' : '';
     updateTime();
     updateSegInfo();
     updateButtons();
