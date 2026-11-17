@@ -233,11 +233,12 @@
     o = vec4(c * m, m);
   }`;
   const FS_EBLUR = HEAD + `
-  uniform sampler2D uS; uniform ivec2 uDir; uniform float uK[49];
+  uniform sampler2D uS; uniform ivec2 uDir; uniform float uK[49]; uniform int uKn;
   int refl(int i, int n) { if (n == 1) return 0; for (int t = 0; t < 8; t++) { if (i < 0) i = -i; if (i >= n) i = 2 * n - 2 - i; } return clamp(i, 0, n - 1); }
   void main() {
     ivec2 p = P(); vec4 acc = texelFetch(uS, p, 0) * uK[0];
     for (int k = 1; k < 49; k++) {
+      if (k >= uKn) break;
       ivec2 a = p - uDir * k, b = p + uDir * k;
       a = ivec2(refl(a.x, uSize.x), refl(a.y, uSize.y));
       b = ivec2(refl(b.x, uSize.x), refl(b.y, uSize.y));
@@ -262,12 +263,14 @@
     return k.map(v => v / sum).slice(c);   // 中心から片側（9 個）
   }
   const K2 = gaussian(2.0);
-  const K12 = gaussian(12.0);    // 片側 49 個
+  const K12 = gaussian(12.0);    // 片側 49 個（横 240 で推定するとき）
+  const K6 = gaussian(6.0);      // 片側 25 個（横 120 で推定するとき。同じ広さのぼかし）
+  const pad49 = k => k.concat(new Array(49 - k.length).fill(0));
 
   class GpuCompositor {
     /** canvas に WebGL2 で描く。使えないときは例外 */
     constructor(canvas) {
-      const gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+      const gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false, preserveDrawingBuffer: false, powerPreference: 'high-performance' });
       if (!gl) throw new Error('WebGL2 が使えません');
       this.gl = gl;
       this.canvas = canvas;
@@ -354,6 +357,9 @@
       };
       this.canvas.width = w; this.canvas.height = h;
       this.bgImageKey = null;
+      const del = t => { if (t) { gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fb); } };
+      del(this.black); this.black = null;
+      del(this.sharedBg); this.sharedBg = null; this.sharedBgKey = null;
     }
 
     /** 1 回の描画（out = 書き込み先。null なら画面） */
@@ -379,7 +385,7 @@
           else if (v.length === 2 && Number.isInteger(v[0]) && k !== 'uRect') gl.uniform2i(l, v[0], v[1]);
           else if (v.length === 3) gl.uniform3f(l, v[0], v[1], v[2]);
           else if (v.length === 4) gl.uniform4f(l, v[0], v[1], v[2], v[3]);
-        } else if (k === 'uR' || k === 'uMaxR' || k === 'uMode' || k === 'uView' || k === 'uFirst') gl.uniform1i(l, v);
+        } else if (k === 'uR' || k === 'uMaxR' || k === 'uMode' || k === 'uView' || k === 'uFirst' || k === 'uKn') gl.uniform1i(l, v);
         else gl.uniform1f(l, v);
       }
       gl.bindVertexArray(this.vao);
@@ -446,14 +452,62 @@
     // コマごとに「枠」を 1 つ使う（合成するまで結果を取っておくため、いくつかを順番に使い回す）
     prepareEstimate(ew, eh, slots = 8) {
       const gl = this.gl;
-      if (this.eSlots && this.ew === ew && this.eh === eh) return;
-      const del = t => { gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fb); };
-      if (this.eSlots) { for (const sl of this.eSlots) { del(sl.sm); del(sl.est); } del(this.eA); del(this.eB); del(this.eC); }
+      if (this.eSlots && this.ew === ew && this.eh === eh && this.eSlots.length === slots && this.ringW === this.w && this.ringH === this.h) return;
+      const del = t => { if (t) { gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fb); } };
+      if (this.eSlots) { for (const sl of this.eSlots) { del(sl.sm); del(sl.est); del(sl.fg); del(sl.bg); } del(this.eA); del(this.eB); del(this.eC); }
       this.ew = ew; this.eh = eh;
+      this.ringW = this.w; this.ringH = this.h;
       this.eSlots = [];
-      for (let i = 0; i < slots; i++) this.eSlots.push({ sm: this.target(ew, eh), est: this.target(ew, eh, true, true) });
-      this.eA = this.target(ew, eh, true); this.eB = this.target(ew, eh, true); this.eC = this.target(ew, eh, true);
+      const fl = this.floatOk;
+      for (let i = 0; i < slots; i++) this.eSlots.push({
+        sm: this.target(ew, eh), est: fl ? this.target(ew, eh, true, true) : null,
+        fg: this.target(this.w, this.h), bg: this.target(this.w, this.h),   // 計算する大きさにしたコマ（GPU に送るのは 1 回だけ）
+      });
+      if (fl) { this.eA = this.target(ew, eh, true); this.eB = this.target(ew, eh, true); this.eC = this.target(ew, eh, true); }
       this.eNext = 0;
+    }
+
+    /**
+     * 再生用：コマを GPU に 1 回だけ送り、計算する大きさのコマ・背景・背景色の推定用の縮小を作って枠に入れる。
+     * 呼んだあとは fg・bg（VideoFrame）をすぐ閉じてよい（デコーダーに早く返せる）。
+     * 戻り値：{ slot, est }（est は GPU で推定するときの Promise。できないときは null）
+     */
+    prepareFrame(fg, bg, bgKey) {
+      const gl = this.gl, w = this.w, h = this.h;
+      const slot = this.eSlots[this.eNext];
+      this.eNext = (this.eNext + 1) % this.eSlots.length;
+      this.upload(this.srcFg, fg, true);
+      this.pass('resample', slot.fg, { uRect: [0, 0, 1, 1] }, { uSrc: this.srcFg });
+      this.pass('resample', slot.sm, { uRect: [0, 0, 1, 1] }, { uSrc: this.srcFg });
+      if (!bg) {
+        if (!this.black) {
+          this.black = this.target(w, h);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, this.black.fb); gl.viewport(0, 0, w, h);
+          gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+        }
+        slot.bgTex = this.black.tex;
+      } else if (bgKey) {
+        // 背景画像：1 回だけ作って使い回す
+        if (bgKey !== this.sharedBgKey) {
+          if (!this.sharedBg) this.sharedBg = this.target(w, h);
+          this.upload(this.srcBg, bg, true);
+          const bw = bg.displayWidth || bg.width, bh = bg.displayHeight || bg.height;
+          this.pass('resample', this.sharedBg, { uRect: GpuCompositor.coverRect(bw, bh, w, h) }, { uSrc: this.srcBg });
+          this.sharedBgKey = bgKey;
+        }
+        slot.bgTex = this.sharedBg.tex;
+      } else {
+        this.upload(this.srcBg, bg, true);
+        const bw = bg.displayWidth || bg.width, bh = bg.displayHeight || bg.height;
+        this.pass('resample', slot.bg, { uRect: GpuCompositor.coverRect(bw, bh, w, h) }, { uSrc: this.srcBg });
+        slot.bgTex = slot.bg.tex;
+      }
+      return { slot, est: this.floatOk ? this.estimateSlot(slot) : null };
+    }
+
+    /** prepareFrame で作った枠を合成して画面に描く */
+    renderSlot(slot, s, view) {
+      this.renderTextures(slot.fg.tex, slot.bgTex, s, view);
     }
 
     /**
@@ -461,11 +515,16 @@
      * 一番多い色だけは CPU で求めるので、縮小したコマを読み出す（GPU を待たずに予約して読む）。
      */
     estimateOnGpu(fg) {
-      const ew = this.ew, eh = this.eh;
       const slot = this.eSlots[this.eNext];
       this.eNext = (this.eNext + 1) % this.eSlots.length;
       this.upload(this.srcSmall || (this.srcSmall = this.newTex(true)), fg, true);
       this.pass('resample', slot.sm, { uRect: [0, 0, 1, 1] }, { uSrc: this.srcSmall });
+      return this.estimateSlot(slot);
+    }
+
+    /** slot.sm（縮小したコマ）から背景色を推定して slot.est に入れる */
+    estimateSlot(slot) {
+      const ew = this.ew, eh = this.eh;
       return this.readAsync(slot.sm, ew, eh).then(px => {
         // 一番多い色（16 段階に量子化。並びは compositor.js と同じ）
         const n = ew * eh, hist = new Int32Array(4096);
@@ -479,8 +538,9 @@
         // 背景の部分だけで色をなめらかに広げる（3 回くり返す）
         for (let it = 0; it < 3; it++) {
           this.pass('epack', this.eA, { uFirst: it === 0 ? 1 : 0, uMode: m }, { uSm: slot.sm.tex, uPrev: slot.est.tex });
-          this.pass('eblur', this.eB, { uDir: [1, 0], uK: K12 }, { uS: this.eA.tex });
-          this.pass('eblur', this.eC, { uDir: [0, 1], uK: K12 }, { uS: this.eB.tex });
+          const kk = this.ew > 160 ? K12 : K6;
+          this.pass('eblur', this.eB, { uDir: [1, 0], uK: pad49(kk), uKn: kk.length }, { uS: this.eA.tex });
+          this.pass('eblur', this.eC, { uDir: [0, 1], uK: pad49(kk), uKn: kk.length }, { uS: this.eB.tex });
           this.pass('eest', slot.est, { uMode: m }, { uB: this.eC.tex, uSm: slot.sm.tex });
         }
         return slot;
@@ -546,13 +606,19 @@
         gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
         this.bgImageKey = '__black';
       }
+      this.renderTextures(T.fg.tex, T.bg.tex, s, view);
+    }
+
+    /** 計算する大きさになったコマ（fgTex）と背景（bgTex）を合成して画面に描く */
+    renderTextures(fgTex, bgTex, s, view) {
+      const T = this.t, w = this.w, h = this.h;
       if (view !== 0) {
         this.pass('final', null, { uEstScale: this.estScale, uView: view, uRadius: 0, uMode: 1, uFix: [0, 0, 0], uHalf: [this.hw, this.hh] },
-          { uFg: T.fg.tex, uBg: T.bg.tex, uEst: this.curEst || this.est, uA: T.a0.tex, uD: T.dist.tex, uL: T.h2.tex });
+          { uFg: fgTex, uBg: bgTex, uEst: this.curEst || this.est, uA: T.a0.tex, uD: T.dist.tex, uL: T.h2.tex });
         return;
       }
 
-      this.pass('alpha', T.a0, { uEstScale: this.estScale, uD0: s.KeyThreshold, uSoft: Math.max(1, s.KeySoftness) }, { uFg: T.fg.tex, uEst: this.curEst || this.est });
+      this.pass('alpha', T.a0, { uEstScale: this.estScale, uD0: s.KeyThreshold, uSoft: Math.max(1, s.KeySoftness) }, { uFg: fgTex, uEst: this.curEst || this.est });
       this.pass('erode', T.a1, {}, { uA: T.a0.tex });
       this.pass('dilate', T.a2, {}, { uA: T.a1.tex });
       let A = T.a2;
@@ -567,7 +633,7 @@
       const auto = s.OutlineMode === 0;
       if (radius > 0.01) {
         const maxR = Math.min(14, Math.ceil(radius) + 2);
-        this.pass('masklum', T.ml, { uEstScale: this.estScale }, { uA: A.tex, uFg: T.fg.tex, uEst: this.curEst || this.est });
+        this.pass('masklum', T.ml, { uEstScale: this.estScale }, { uA: A.tex, uFg: fgTex, uEst: this.curEst || this.est });
         this.pass('edtv', T.ev, { uMaxR: maxR }, { uM: T.ml.tex });
         this.pass('edth', T.dist, { uMaxR: maxR }, { uV: T.ev.tex });
         if (auto) {
@@ -584,7 +650,7 @@
         default: fix = [255, 255, 255];
       }
       this.pass('final', null, { uEstScale: this.estScale, uView: 0, uRadius: radius, uMode: auto ? 0 : 1, uFix: fix, uHalf: [this.hw, this.hh] },
-        { uFg: T.fg.tex, uBg: T.bg.tex, uEst: this.curEst || this.est, uA: A.tex, uD: T.dist.tex, uL: T.h2.tex });
+        { uFg: fgTex, uBg: bgTex, uEst: this.curEst || this.est, uA: A.tex, uD: T.dist.tex, uL: T.h2.tex });
     }
   }
 

@@ -674,11 +674,12 @@
       this.waiters = [];                         // 読む側・見せる側を起こす合図を待っている人
       let error = null;
       if (this.gpu) {
-        this.maxQ = 4;                            // コマ（VideoFrame）をためすぎるとデコーダーが止まるので少なめ
+        this.maxQ = 6;                            // 先に用意しておくコマの数（枠は 12 個を順番に使う）
         this.gpu.resize(w, h);
-        // 背景色の推定に使う縮小の大きさ（CPU の計算と同じく横 240 まで）
-        this.ew = Math.min(240, w); this.eh = Math.max(1, Math.round(h * this.ew / w));
-        if (this.gpu.floatOk) this.gpu.prepareEstimate(this.ew, this.eh, 12);
+        // 背景色の推定に使う縮小の大きさ。GPU で推定するときは横 120（軽い）、計算スレッドのときは CPU と同じ横 240
+        const ew0 = this.gpu.floatOk ? 120 : 240;
+        this.ew = Math.min(ew0, w); this.eh = Math.max(1, Math.round(h * this.ew / w));
+        this.gpu.prepareEstimate(this.ew, this.eh, 12);
       }
       const producer = (this.gpu ? this.produceGpu(w, h) : this.produce(w, h))
         .catch(e => { error = error || e; }).finally(() => { this.producerDone = true; this.signal(); });
@@ -718,28 +719,27 @@
             continue;
           }
           const p0 = performance.now();
-          const fg = s.toVideoFrame();
-          s.close();
-          let bgf = null;
-          if (bReader) { const b = await bReader.frameAt(t + 1e-4); bgf = b ? b.toVideoFrame() : null; }
-          // 背景色の推定は計算スレッドで（縮小したコマを渡す）
+          // コマを GPU に 1 回だけ送り、計算する大きさのコマと背景、背景色の推定用の縮小を作る。
+          // 送ったらすぐにコマを閉じてデコーダーに返す（先読みを増やしても止まらないように）
+          let bgSrc = null, bgKey = null, bgFrame = null;
+          if (bReader) { const b = await bReader.frameAt(t + 1e-4); if (b) bgFrame = bgSrc = b.toVideoFrame(); }
+          else if (bg && bg.isImage) { bgSrc = bg.bitmap; bgKey = 'img:' + bg.name + ':' + bg.file.size; }
+          if (this.stopped) { s.close(); if (bgFrame) bgFrame.close(); break; }
+          let prepared;
+          const vf = s.toVideoFrame();
+          try { prepared = this.gpu.prepareFrame(vf, bgSrc, bgKey); }
+          finally { vf.close(); s.close(); if (bgFrame) bgFrame.close(); }
           // 背景色の推定
-          let est = null;
-          try {
-            if (this.gpu.floatOk) {
-              // GPU で毎コマ推定する（速いので遅れない）
-              est = this.gpu.estimateOnGpu(fg);
-            } else if (!this.estBusy) {
-              // GPU で推定できないとき：計算スレッドに頼む。前の推定が終わるまでは次を頼まない（仕事がたまらないように）
-              this.estBusy = true;
-              const small = this.gpu.shrinkForEstimate(fg, this.ew, this.eh);
-              est = small.then(px => pool.estimate(px, this.ew, this.eh, { key: 'playest', reuse: 8 }))
-                .finally(() => { this.estBusy = false; });
-            }
-          } catch { est = null; this.estBusy = false; }
+          let est = prepared.est;
+          if (!est && !this.estBusy) {
+            // GPU で推定できないとき：計算スレッドに頼む。前の推定が終わるまでは次を頼まない（仕事がたまらないように）
+            this.estBusy = true;
+            est = this.gpu.readAsync(prepared.slot.sm, this.ew, this.eh)
+              .then(px => pool.estimate(px, this.ew, this.eh, { key: 'playest', reuse: 8 }))
+              .finally(() => { this.estBusy = false; });
+          }
           this.stat.read += performance.now() - p0;
-          if (this.stopped) { try { fg.close(); } catch { } if (bgf) try { bgf.close(); } catch { } break; }
-          const entry = { t, due, fg, bg: bgf, est, ready: !est };
+          const entry = { t, due, slot: prepared.slot, est, ready: !est };
           if (est) est.then(r => {
             entry.ready = true;
             // 終わった中でいちばん新しい推定を覚えておく（表示に間に合わなかったコマの推定も捨てずに使う）
@@ -777,10 +777,7 @@
         this.stat.waitedJob += performance.now() - w0;
         this.q.shift();
         this.signal();
-        const close = () => {
-          if (job.fg) { try { job.fg.close(); } catch { } job.fg = null; }
-          if (job.bg) { try { job.bg.close(); } catch { } job.bg = null; }
-        };
+        const close = () => { };      // コマは prepareFrame のあとすぐ閉じているので、ここでは何もしない
         if (this.stopped) { close(); return; }
         // このコマの推定が間に合わなかったときは、終わった中でいちばん新しい推定を使う
         if (!est && this.latestEst && !this.latestEstUsed) est = this.latestEst;
@@ -796,12 +793,9 @@
         if (next && this.now() > next.due && next.ready) { close(); this.stat.skipped++; continue; }
         const wait = job.due - this.now();
         if (wait > 0.002) await sleep(wait * 1000);
-        if (this.stopped || !job.fg) { close(); return; }
+        if (this.stopped) return;
         const g0 = performance.now();
-        const bgSrc = job.bg || (bg && bg.isImage ? bg.bitmap : null);
-        const bgKey = job.bg ? null : (bg && bg.isImage ? 'img:' + bg.name + ':' + bg.file.size : null);
-        try { this.gpu.render(job.fg, bgSrc, bgKey, timeline.at(job.t), viewMode); }
-        finally { close(); }
+        this.gpu.renderSlot(job.slot, timeline.at(job.t), viewMode);
         this.stat.conv += performance.now() - g0;
         this.stat.made++;
         showGl(true);
