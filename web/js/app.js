@@ -641,7 +641,19 @@
       if (a) { try { a.pause(); } catch { } URL.revokeObjectURL(a.src); a.removeAttribute('src'); }
     }
 
-    stop() { this.stopped = true; this.stopAudio(); }
+    stop() {
+      this.stopped = true;
+      this.stopAudio();
+      // 待っている読む側・見せる側を起こして、すぐ終わらせる
+      // （起こさないと、ためていたコマがデコーダーに返されず、次の再生でコマが読めなくなる）
+      this.signal();
+      if (this.q) {
+        for (const j of this.q) {
+          if (j.fg) { try { j.fg.close(); } catch { } j.fg = null; }
+          if (j.bg) { try { j.bg.close(); } catch { } j.bg = null; }
+        }
+      }
+    }
 
     /**
      * 再生の流れ：
@@ -709,12 +721,14 @@
           let bgf = null;
           if (bReader) { const b = await bReader.frameAt(t + 1e-4); bgf = b ? b.toVideoFrame() : null; }
           // 背景色の推定は計算スレッドで（縮小したコマを渡す）
+          // 背景色の推定：縮小したコマを GPU で作り（合成と同じ色の変換）、計算スレッドで推定する
           let est = null;
           try {
-            const bmp = await createImageBitmap(fg, { resizeWidth: this.ew, resizeHeight: this.eh, resizeQuality: 'medium' });
-            est = pool.estimate(bmp, this.ew, this.eh, { key: 'playest', reuse: 16 });
+            const small = this.gpu.shrinkForEstimate(fg, this.ew, this.eh);
+            est = small.then(px => pool.estimate(px, this.ew, this.eh, { key: 'playest', reuse: 8 }));
           } catch { est = null; }
           this.stat.read += performance.now() - p0;
+          if (this.stopped) { try { fg.close(); } catch { } if (bgf) try { bgf.close(); } catch { } break; }
           const entry = { t, due, fg, bg: bgf, est, ready: !est };
           if (est) est.then(() => { entry.ready = true; }, () => { entry.ready = true; });
           this.q.push(entry);
@@ -749,7 +763,10 @@
         this.stat.waitedJob += performance.now() - w0;
         this.q.shift();
         this.signal();
-        const close = () => { try { job.fg.close(); } catch { } if (job.bg) try { job.bg.close(); } catch { } };
+        const close = () => {
+          if (job.fg) { try { job.fg.close(); } catch { } job.fg = null; }
+          if (job.bg) { try { job.bg.close(); } catch { } job.bg = null; }
+        };
         if (this.stopped) { close(); return; }
         if (est) { this.gpu.setEstimate(est, est.sw || this.ew, est.sh || this.eh); this.haveEst = true; this.stat.comp += est.timing ? est.timing.comp : 0; }
         if (!this.clockRunning) { await this.startClock(); if (this.stopped) { close(); return; } }
@@ -758,7 +775,7 @@
         if (next && this.now() > next.due && next.ready) { close(); this.stat.skipped++; continue; }
         const wait = job.due - this.now();
         if (wait > 0.002) await sleep(wait * 1000);
-        if (this.stopped) { close(); return; }
+        if (this.stopped || !job.fg) { close(); return; }
         const g0 = performance.now();
         const bgSrc = job.bg || (bg && bg.isImage ? bg.bitmap : null);
         const bgKey = job.bg ? null : (bg && bg.isImage ? 'img:' + bg.name + ':' + bg.file.size : null);

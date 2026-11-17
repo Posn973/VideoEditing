@@ -346,6 +346,46 @@
       if (mip) gl.generateMipmap(gl.TEXTURE_2D);
     }
 
+    /**
+     * 背景色の推定に使う、縮小したコマ（ew×eh の RGBA）を GPU で作る。
+     * 合成と同じ GPU の色の変換を通すので、推定した背景色と合成するコマの色がずれない。
+     * 読み出しは GPU の作業が終わるのを待たずに予約し、終わったら返す（画面が止まらないように）。
+     */
+    shrinkForEstimate(fg, ew, eh) {
+      const gl = this.gl;
+      if (!this.small || this.small.w !== ew || this.small.h !== eh) {
+        if (this.small) { gl.deleteTexture(this.small.tex); gl.deleteFramebuffer(this.small.fb); }
+        this.small = this.target(ew, eh);
+      }
+      this.upload(this.srcSmall || (this.srcSmall = this.newTex(true)), fg, true);
+      this.pass('resample', this.small, { uRect: [0, 0, 1, 1] }, { uSrc: this.srcSmall });
+      const size = ew * eh * 4;
+      const pbo = gl.createBuffer();
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo);
+      gl.bufferData(gl.PIXEL_PACK_BUFFER, size, gl.STREAM_READ);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.small.fb);
+      gl.readPixels(0, 0, ew, eh, gl.RGBA, gl.UNSIGNED_BYTE, 0);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+      const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+      gl.flush();
+      return new Promise((resolve, reject) => {
+        const t0 = performance.now();
+        const poll = () => {
+          const st = gl.clientWaitSync(sync, 0, 0);
+          if (st === gl.WAIT_FAILED) { gl.deleteSync(sync); gl.deleteBuffer(pbo); reject(new Error('GPU の読み出しに失敗しました')); return; }
+          if (st === gl.TIMEOUT_EXPIRED && performance.now() - t0 < 1000) { setTimeout(poll, 2); return; }
+          gl.deleteSync(sync);
+          const out = new Uint8Array(size);
+          gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo);
+          gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, out);
+          gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+          gl.deleteBuffer(pbo);
+          resolve(out);
+        };
+        poll();
+      });
+    }
+
     /** 背景色の推定（sw×sh の RGBA）を入れる */
     setEstimate(rgba, sw, sh) {
       const gl = this.gl;

@@ -55,7 +55,7 @@
         // 背景色の推定だけを行う（GPU で再生するとき用。小さく縮小したコマを受け取る）
         try {
           const t0 = performance.now();
-          const fg = toRgba({ bitmap: m.bitmap }, m.w, m.h);
+          const fg = m.rgba ? new Uint8ClampedArray(m.rgba) : toRgba({ bitmap: m.bitmap }, m.w, m.h);
           const key = `${m.key}:${m.w}x${m.h}`;
           let c = comps.get(key);
           if (!c) { c = new lib.Compositor(m.w, m.h); comps.set(key, c); }
@@ -157,15 +157,23 @@
       return this.processSrc({ rgba: fgBuf }, bgSrc, w, h, settings, opts);
     }
 
-    /** 背景色の推定だけを頼む（bitmap は w×h に縮小済み。w は 240 以下）。結果は sw×sh の RGBA */
-    estimate(bitmap, w, h, opts = {}) {
+    /**
+     * 背景色の推定だけを頼む。src は w×h に縮小済みの ImageBitmap か RGBA（Uint8Array）。w は 240 以下。
+     * 結果は sw×sh の RGBA
+     */
+    estimate(src, w, h, opts = {}) {
       this.ensure(1);
       const wk = this.workers[0];      // 推定の使い回しを続けるため、いつも同じ Worker で
       const id = nextId++;
+      const isBitmap = typeof ImageBitmap !== 'undefined' && src instanceof ImageBitmap;
+      const msg = { type: 'estimate', id, w, h, key: opts.key || 'est', reuse: opts.reuse || 0 };
+      let transfer;
+      if (isBitmap) { msg.bitmap = src; transfer = [src]; }
+      else { const buf = src.buffer.byteLength === src.byteLength ? src.buffer : src.slice().buffer; msg.rgba = buf; transfer = [buf]; }
       return new Promise((resolve, reject) => {
         wk.jobs.set(id, { resolve, reject });
         wk.busy++;
-        wk.w.postMessage({ type: 'estimate', id, w, h, bitmap, key: opts.key || 'est', reuse: opts.reuse || 0 }, [bitmap]);
+        wk.w.postMessage(msg, transfer);
       });
     }
 
