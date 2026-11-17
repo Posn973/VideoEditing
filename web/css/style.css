@@ -258,3 +258,6 @@ body.split #segRow button, body.split #playRow button, body.split #viewRow butto
   max-width: 640px; margin: 0 auto;
 }
 #exportNotice .sub { font-size: 12px; color: #6b5a2a; margin-top: 2px; }
+/* 3 段のとき（区間の設定を開いている間）は、下段に区間の設定だけを出す（OK・キャンセルを見失わないように） */
+body.split #left > :not(#segDialog) { display: none !important; }
+body.split #segDialog:not(.inPip) { margin-bottom: 0; }
