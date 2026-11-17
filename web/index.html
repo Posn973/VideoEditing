@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>歌詞動画 透過合成（Web 版）</title>
 <link rel="icon" href="icon.png">
-<link rel="stylesheet" href="css/style.css?v=20261118c">
+<link rel="stylesheet" href="css/style.css?v=20261118d">
 </head>
 <body>
 <div id="app">
@@ -104,6 +104,7 @@
       <canvas id="preview"></canvas>
       <canvas id="previewGL" hidden></canvas>
       <div id="previewMsg">① 歌詞動画 と ② 背景 を選ぶと、ここにプレビューが表示されます</div>
+      <button id="btnRotate" type="button" title="プレビューを回して大きく表示します（押すたびに 右 → 左 → 回さない）。書き出す動画の向きは変わりません">⟳ 回さない</button>
     </div>
     <div id="bottom">
       <input type="range" id="trkTime" min="0" max="0" step="any" value="0">
@@ -229,12 +230,12 @@
   <div class="sub" id="exportNoticeLock"></div>
 </div>
 <script src="lib/mediabunny.min.js"></script>
-<script src="js/compositor.js?v=20261118c"></script>
-<script src="js/segments.js?v=20261118c"></script>
-<script src="js/pool.js?v=20261118c"></script>
-<script src="js/media.js?v=20261118c"></script>
-<script src="js/gpu.js?v=20261118c"></script>
-<script src="js/filestore.js?v=20261118c"></script>
-<script src="js/app.js?v=20261118c"></script>
+<script src="js/compositor.js?v=20261118d"></script>
+<script src="js/segments.js?v=20261118d"></script>
+<script src="js/pool.js?v=20261118d"></script>
+<script src="js/media.js?v=20261118d"></script>
+<script src="js/gpu.js?v=20261118d"></script>
+<script src="js/filestore.js?v=20261118d"></script>
+<script src="js/app.js?v=20261118d"></script>
 </body>
 </html>

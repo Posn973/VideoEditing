@@ -2026,6 +2026,61 @@
     c.addEventListener(c.tagName === 'SELECT' ? 'change' : 'input', updateSummaries);
   for (const c of [el.nudKey, el.nudOutline, el.nudNoise]) c.addEventListener('change', updateSummaries);
 
+  // ---- プレビューの回転 ----
+  // 3 段のとき：回転ボタンで 右（90°）→ 左（-90°）→ 回さない。縦長・横長の動画で別々に覚える（縦長は右がはじめの設定）
+  // 全画面（スマホ）のとき：回したほうが大きく映るなら自動で回す（向きはボタンで最後に選んだ向き）
+  // 回すのは画面の表示だけで、書き出す動画の向きは変わらない
+  const btnRotate = $('btnRotate');
+  function isTallVideo() { return lyric && lyric.height > lyric.width; }
+  function splitRotation() {
+    if (!lyric) return 0;
+    const v = isTallVideo() ? prefs.RotTall : prefs.RotWide;
+    return v === 90 || v === -90 || v === 0 ? v : (isTallVideo() ? 90 : 0);
+  }
+  function previewRotation() {
+    if (!lyric) return 0;
+    const b = document.body.classList;
+    if (b.contains('full')) {
+      if (!b.contains('mobile')) return 0;
+      const W = el.previewHost.clientWidth, H = el.previewHost.clientHeight;
+      const vw = lyric.width, vh = lyric.height;
+      const keep = Math.min(W / vw, H / vh), turn = Math.min(W / vh, H / vw);
+      if (turn <= keep * 1.05) return 0;
+      return prefs.RotDir === -90 ? -90 : 90;
+    }
+    return b.contains('split') ? splitRotation() : 0;
+  }
+  function fitPreview() {
+    const rot = previewRotation();
+    for (const c of [el.preview, $('previewGL')]) {
+      if (!rot || !lyric) {
+        c.classList.remove('rot');
+        c.style.width = c.style.height = c.style.transform = '';
+        continue;
+      }
+      // 回したあとに枠へ収まるように、縦横を入れ替えた枠に合わせて大きさを決める
+      const W = el.previewHost.clientHeight, H = el.previewHost.clientWidth;
+      const s = Math.min(W / lyric.width, H / lyric.height);
+      c.classList.add('rot');
+      c.style.width = Math.floor(lyric.width * s) + 'px';
+      c.style.height = Math.floor(lyric.height * s) + 'px';
+      c.style.transform = `rotate(${rot}deg)`;
+    }
+    const r = splitRotation();
+    btnRotate.textContent = r === 90 ? '⟳ 右に回転中' : r === -90 ? '⟲ 左に回転中' : '⟳ 回さない';
+  }
+  btnRotate.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!lyric) return;
+    const next = { 90: -90, '-90': 0, 0: 90 }[splitRotation()];
+    if (isTallVideo()) prefs.RotTall = next; else prefs.RotWide = next;
+    if (next) prefs.RotDir = next;
+    savePrefs();
+    fitPreview();
+  });
+  for (const ev of ['dblclick', 'pointerdown']) btnRotate.addEventListener(ev, e => e.stopPropagation());
+  if (window.ResizeObserver) new ResizeObserver(() => fitPreview()).observe(el.previewHost);
+
   function updateLayout() {
     const w = window.innerWidth, h = window.innerHeight;
     const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
@@ -2053,6 +2108,7 @@
     }
     el.btnFull.textContent = document.body.classList.contains('full') ? (mobile ? '全画面を終了' : '全画面を終了（Esc）') : (mobile ? '⛶ 全画面' : '⛶ 全画面（F11）');
     drawSegBar();
+    fitPreview();
   }
   window.addEventListener('resize', updateLayout);
   // 区間の設定を開く・閉じる・別の窓に出す・戻すたびに、3 段にするかどうかを決め直す

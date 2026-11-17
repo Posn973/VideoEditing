@@ -261,3 +261,14 @@ body.split #segRow button, body.split #playRow button, body.split #viewRow butto
 /* 3 段のとき（区間の設定を開いている間）は、下段に区間の設定だけを出す（OK・キャンセルを見失わないように） */
 body.split #left > :not(#segDialog) { display: none !important; }
 body.split #segDialog:not(.inPip) { margin-bottom: 0; }
+
+/* プレビューの回転ボタン（3 段のときだけ、上段の右上に小さく出す） */
+#btnRotate {
+  display: none; position: absolute; top: 4px; right: 4px; z-index: 5;
+  background: rgba(0,0,0,.5); color: #fff; border: 1px solid rgba(255,255,255,.45); border-radius: 14px;
+  font-size: 12px; line-height: 1; padding: 6px 10px; min-height: 0; opacity: .85;
+}
+body.split #btnRotate { display: block; }
+body.split.full #btnRotate { display: none; }
+/* 回して表示しているとき：大きさは app.js が決める */
+#preview.rot, #previewGL.rot { max-width: none; max-height: none; flex: none; }
