@@ -406,7 +406,7 @@
   for (const b of $('fullBar').querySelectorAll('button')) b.addEventListener('dblclick', e => e.stopPropagation());
   {
     // 再生ボタンの表示（▶ 再生／■ 停止）と使える・使えないを、下のボタンに合わせる
-    const fb = $('fbPlay'), sync = () => { fb.textContent = el.btnPlay.textContent; fb.disabled = el.btnPlay.disabled; };
+    const fb = $('fbPlay'), sync = () => { fb.innerHTML = el.btnPlay.innerHTML; fb.disabled = el.btnPlay.disabled; };
     new MutationObserver(sync).observe(el.btnPlay, { attributes: true, childList: true, characterData: true, subtree: true });
     sync();
     const steps = [['btnBackSec', 'fbBackSec'], ['btnBackFrame', 'fbBackFrame'], ['btnFwdFrame', 'fbFwdFrame'], ['btnFwdSec', 'fbFwdSec']];
@@ -958,7 +958,7 @@
     closeStillReaders();
     const pl = new Player(start);
     player = pl;
-    el.btnPlay.textContent = '■ 停止';
+    el.btnPlay.innerHTML = '<span class="pi">■</span><span class="pt">停止</span>';
     el.lblPlayInfo.textContent = '準備しています...';
     updateButtons();
     const err = await pl.run();
@@ -975,7 +975,7 @@
     pl.stop();
     pool.clear('play');
     curTime = clamp(frameIndexOf(pl.position), 0, lastFrameIndex()) / fps();
-    el.btnPlay.textContent = '▶ 再生';
+    el.btnPlay.innerHTML = '<span class="pi">▶</span><span class="pt">再生</span>';
     // 止めた位置は正確な計算で表示し直す（スマホでは数秒かかることがあるので、そのことを表示する）
     el.lblPlayInfo.textContent = refreshStill ? '止めた位置を正確な計算で表示し直しています...' : '';
     updateTime();
@@ -1185,11 +1185,11 @@
     if (s && selectedSeg !== s) { selectedSeg = s; refreshSegmentUi(); }
     const items = s ? [
       { text: `区間 ${fmtSeg(s.Start)} ～ ${fmtSeg(s.End)}`, disabled: true }, { sep: true },
-      { text: '区間の設定...', action: () => editSegment(s) },
+      { text: '区間設定', action: () => editSegment(s) },
       { text: '区間の始まりへ移動', action: () => seekTo(s.Start) },
       { text: '区間の終わりへ移動', action: () => seekTo(s.End) },
       { sep: true },
-      { text: '区間を削除', action: () => deleteSegment(s) },
+      { text: '区間削除', action: () => deleteSegment(s) },
     ] : [
       { text: `${fmtSeg(t)} を「ここから」にする`, action: () => { markStart = t; if (markEnd != null && markEnd <= markStart) markEnd = null; refreshSegmentUi(); } },
       { text: `${fmtSeg(t)} を「ここまで」にする`, action: () => { markEnd = t; if (markStart != null && markStart >= markEnd) markStart = null; refreshSegmentUi(); } },
@@ -1651,7 +1651,7 @@
 
   function confirmDiscardSegments() {
     if (!segmentsDirty || !segments.length) return true;
-    return confirm('区間の変更が保存されていません。保存せずに続けますか？\n（保存する場合は「キャンセル」を押してから「区間を保存...」を押してください）');
+    return confirm('区間の変更が保存されていません。保存せずに続けますか？\n（保存する場合は「キャンセル」を押してから「区間保存」を押してください）');
   }
   window.addEventListener('beforeunload', e => {
     if ((segmentsDirty && segments.length) || exporting) { e.preventDefault(); e.returnValue = ''; }

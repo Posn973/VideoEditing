@@ -314,3 +314,22 @@ body.mobile:not(.landscape):not(.split) #btnSaveSeg { order: 2; }
 body.mobile:not(.landscape):not(.split) #btnMarkStart,
 body.mobile:not(.landscape):not(.split) #btnMarkEnd,
 body.mobile:not(.landscape):not(.split) #btnAddSeg { order: 3; }
+
+/* 再生ボタンの表示：パソコンなどでは「▶ 再生」／「■ 停止」 */
+button.play .pi { margin-right: 4px; }
+/* スマホの縦向き（ふだんの画面）：ボタンの大きさをそろえる */
+body.mobile:not(.landscape):not(.split) #segRow { gap: 6px; }
+body.mobile:not(.landscape):not(.split) #segRow { flex-wrap: wrap; }
+body.mobile:not(.landscape):not(.split) #segRow button { flex: 1 1 28%; min-width: 0; height: 44px; padding: 0 4px; font-size: 15px; white-space: nowrap; overflow: hidden; }
+body.mobile:not(.landscape):not(.split) #segRow #btnLoadSeg { flex: 1 1 100%; }
+/* ≪ ＜ 再生 ＞ ≫ は必ず 1 列に並べる（幅に合わせて広がる） */
+body.mobile:not(.landscape):not(.split) #playRow { flex-wrap: wrap; gap: 6px; column-gap: 6px; }
+body.mobile:not(.landscape):not(.split) #playRow button.step,
+body.mobile:not(.landscape):not(.split) #playRow button.play { flex: 1 1 0; min-width: 0; width: auto; height: 44px; margin: 0; padding: 0; }
+body.mobile:not(.landscape):not(.split) #playRow button.play { flex-grow: 1.8; }
+body.mobile:not(.landscape):not(.split) #playRow button.play .pi { display: none; }
+/* 幅がとても狭いときは「再生」の文字の代わりに ▶ ／ ■ だけにする */
+@media (max-width: 340px) {
+  body.mobile:not(.landscape):not(.split) #playRow button.play .pi { display: inline; margin: 0; }
+  body.mobile:not(.landscape):not(.split) #playRow button.play .pt { display: none; }
+}

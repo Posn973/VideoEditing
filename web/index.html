@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>歌詞動画 透過合成（Web 版）</title>
 <link rel="icon" href="icon.png">
-<link rel="stylesheet" href="css/style.css?v=20261118f">
+<link rel="stylesheet" href="css/style.css?v=20261118g">
 </head>
 <body>
 <div id="app">
@@ -110,19 +110,19 @@
       <input type="range" id="trkTime" min="0" max="0" step="any" value="0">
       <canvas id="segBar" height="24"></canvas>
       <div class="row" id="segRow">
-        <button id="btnMarkStart">◆ ここから</button>
-        <button id="btnMarkEnd">ここまで ◆</button>
-        <button id="btnAddSeg" class="bold">＋ 区間を追加</button>
-        <button id="btnEditSeg">区間の設定...</button>
-        <button id="btnDelSeg">区間を削除</button>
-        <button id="btnSaveSeg">区間を保存...</button>
-        <button id="btnLoadSeg">区間を読み込み...</button>
+        <button id="btnMarkStart">ここから</button>
+        <button id="btnMarkEnd">ここまで</button>
+        <button id="btnAddSeg" class="bold">区間追加</button>
+        <button id="btnEditSeg">区間設定</button>
+        <button id="btnDelSeg">区間削除</button>
+        <button id="btnSaveSeg">区間保存</button>
+        <button id="btnLoadSeg">区間読み込み</button>
       </div>
       <div id="lblSegInfo" class="info"></div>
       <div class="row" id="playRow">
         <button id="btnBackSec" class="step" title="1 秒戻る（Shift＋←）">≪</button>
         <button id="btnBackFrame" class="step" title="1 コマ戻る（←）　押し続けると連続で戻ります">＜</button>
-        <button id="btnPlay" class="play">▶ 再生</button>
+        <button id="btnPlay" class="play"><span class="pi">▶</span><span class="pt">再生</span></button>
         <button id="btnFwdFrame" class="step" title="1 コマ進む（→）　押し続けると連続で進みます">＞</button>
         <button id="btnFwdSec" class="step" title="1 秒進む（Shift＋→）">≫</button>
         <span id="lblTime">0:00.0 / 0:00</span>
@@ -228,7 +228,7 @@
 <div id="fullBar">
   <button type="button" class="step" id="fbBackSec" title="1 秒戻る">≪</button>
   <button type="button" class="step" id="fbBackFrame" title="1 コマ戻る（押し続けると連続）">＜</button>
-  <button type="button" class="play" id="fbPlay">▶ 再生</button>
+  <button type="button" class="play" id="fbPlay"><span class="pi">▶</span><span class="pt">再生</span></button>
   <button type="button" class="step" id="fbFwdFrame" title="1 コマ進む（押し続けると連続）">＞</button>
   <button type="button" class="step" id="fbFwdSec" title="1 秒進む">≫</button>
   <button type="button" id="fbExit" title="全画面を終わって、区間の設定に戻ります">戻す</button>
@@ -241,12 +241,12 @@
   <div class="sub" id="exportNoticeLock"></div>
 </div>
 <script src="lib/mediabunny.min.js"></script>
-<script src="js/compositor.js?v=20261118f"></script>
-<script src="js/segments.js?v=20261118f"></script>
-<script src="js/pool.js?v=20261118f"></script>
-<script src="js/media.js?v=20261118f"></script>
-<script src="js/gpu.js?v=20261118f"></script>
-<script src="js/filestore.js?v=20261118f"></script>
-<script src="js/app.js?v=20261118f"></script>
+<script src="js/compositor.js?v=20261118g"></script>
+<script src="js/segments.js?v=20261118g"></script>
+<script src="js/pool.js?v=20261118g"></script>
+<script src="js/media.js?v=20261118g"></script>
+<script src="js/gpu.js?v=20261118g"></script>
+<script src="js/filestore.js?v=20261118g"></script>
+<script src="js/app.js?v=20261118g"></script>
 </body>
 </html>
