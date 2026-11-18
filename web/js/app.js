@@ -1100,9 +1100,10 @@
   });
   // 区間設定：シーク位置が赤い区間の上にあるときはその区間、なければ選んである区間を開く
   function editTargetSeg() { return (lyric && segmentAt(curTime)) || selectedSeg; }
-  function updateEditSegButton() { el.btnEditSeg.disabled = !(lyric && editTargetSeg()); }
+  function updateEditSegButton() { el.btnEditSeg.disabled = el.btnDelSeg.disabled = !(lyric && editTargetSeg()); }
   el.btnEditSeg.addEventListener('click', () => { const sg = editTargetSeg(); if (sg) editSegment(sg); });
-  el.btnDelSeg.addEventListener('click', () => { if (selectedSeg) deleteSegment(selectedSeg); });
+  // 区間削除も同じ：シーク位置が赤い区間の上にあるときはその区間、なければ選んである区間
+  el.btnDelSeg.addEventListener('click', () => { const sg = editTargetSeg(); if (sg) deleteSegment(sg); });
 
   function deleteSegment(seg) {
     if (!confirm(`区間 ${fmtSeg(seg.Start)} ～ ${fmtSeg(seg.End)} を削除しますか？`)) return;
@@ -2048,7 +2049,6 @@
     el.btnMarkStart.disabled = el.btnMarkEnd.disabled = !haveLyric;
     el.btnLoadSeg.disabled = !idle;
     el.btnAddSeg.disabled = !(haveLyric && markStart != null && markEnd != null && markEnd > markStart);
-    el.btnDelSeg.disabled = !(haveLyric && selectedSeg);
     updateEditSegButton();
     el.btnSaveSeg.disabled = !(haveLyric && segments.length);
     el.trkTime.disabled = !haveLyric;
