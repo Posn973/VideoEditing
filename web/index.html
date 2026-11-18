@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>歌詞動画 透過合成（Web 版）</title>
 <link rel="icon" href="icon.png">
-<link rel="stylesheet" href="css/style.css?v=20261118g">
+<link rel="stylesheet" href="css/style.css?v=20261118h">
 </head>
 <body>
 <div id="app">
@@ -120,11 +120,11 @@
       </div>
       <div id="lblSegInfo" class="info"></div>
       <div class="row" id="playRow">
-        <button id="btnBackSec" class="step" title="1 秒戻る（Shift＋←）">≪</button>
-        <button id="btnBackFrame" class="step" title="1 コマ戻る（←）　押し続けると連続で戻ります">＜</button>
+        <button id="btnBackSec" class="step" title="1 秒戻る（Shift＋←）" aria-label="1 秒戻る"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h2.4v14H4zM20 5v14l-7-7zM13.2 5v14l-7-7z"/></svg></button>
+        <button id="btnBackFrame" class="step" title="1 コマ戻る（←）　押し続けると連続で戻ります" aria-label="1 コマ戻る"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 5v14L7 12z"/></svg></button>
         <button id="btnPlay" class="play"><span class="pi">▶</span><span class="pt">再生</span></button>
-        <button id="btnFwdFrame" class="step" title="1 コマ進む（→）　押し続けると連続で進みます">＞</button>
-        <button id="btnFwdSec" class="step" title="1 秒進む（Shift＋→）">≫</button>
+        <button id="btnFwdFrame" class="step" title="1 コマ進む（→）　押し続けると連続で進みます" aria-label="1 コマ進む"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14l10-7z"/></svg></button>
+        <button id="btnFwdSec" class="step" title="1 秒進む（Shift＋→）" aria-label="1 秒進む"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5v14l7-7zM10.8 5v14l7-7zM17.6 5H20v14h-2.4z"/></svg></button>
         <span id="lblTime">0:00.0 / 0:00</span>
         <span class="grp">
           <label><input type="checkbox" id="chkSound" checked> 音を出す</label>
@@ -226,11 +226,11 @@
 
 <!-- 区間の設定を開いたまま全画面にしたときの操作ボタン（動画の下に出す） -->
 <div id="fullBar">
-  <button type="button" class="step" id="fbBackSec" title="1 秒戻る">≪</button>
-  <button type="button" class="step" id="fbBackFrame" title="1 コマ戻る（押し続けると連続）">＜</button>
+  <button type="button" class="step" id="fbBackSec" title="1 秒戻る" aria-label="1 秒戻る"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h2.4v14H4zM20 5v14l-7-7zM13.2 5v14l-7-7z"/></svg></button>
+  <button type="button" class="step" id="fbBackFrame" title="1 コマ戻る（押し続けると連続）" aria-label="1 コマ戻る"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 5v14L7 12z"/></svg></button>
   <button type="button" class="play" id="fbPlay"><span class="pi">▶</span><span class="pt">再生</span></button>
-  <button type="button" class="step" id="fbFwdFrame" title="1 コマ進む（押し続けると連続）">＞</button>
-  <button type="button" class="step" id="fbFwdSec" title="1 秒進む">≫</button>
+  <button type="button" class="step" id="fbFwdFrame" title="1 コマ進む（押し続けると連続）" aria-label="1 コマ進む"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14l10-7z"/></svg></button>
+  <button type="button" class="step" id="fbFwdSec" title="1 秒進む" aria-label="1 秒進む"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5v14l7-7zM10.8 5v14l7-7zM17.6 5H20v14h-2.4z"/></svg></button>
   <button type="button" id="fbExit" title="全画面を終わって、区間の設定に戻ります">戻す</button>
 </div>
 <!-- 全画面にしたときのお知らせ（3 秒で消える） -->
@@ -241,12 +241,12 @@
   <div class="sub" id="exportNoticeLock"></div>
 </div>
 <script src="lib/mediabunny.min.js"></script>
-<script src="js/compositor.js?v=20261118g"></script>
-<script src="js/segments.js?v=20261118g"></script>
-<script src="js/pool.js?v=20261118g"></script>
-<script src="js/media.js?v=20261118g"></script>
-<script src="js/gpu.js?v=20261118g"></script>
-<script src="js/filestore.js?v=20261118g"></script>
-<script src="js/app.js?v=20261118g"></script>
+<script src="js/compositor.js?v=20261118h"></script>
+<script src="js/segments.js?v=20261118h"></script>
+<script src="js/pool.js?v=20261118h"></script>
+<script src="js/media.js?v=20261118h"></script>
+<script src="js/gpu.js?v=20261118h"></script>
+<script src="js/filestore.js?v=20261118h"></script>
+<script src="js/app.js?v=20261118h"></script>
 </body>
 </html>

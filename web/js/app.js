@@ -417,6 +417,8 @@
     }
   }
 
+  // ボタンを長押ししたとき、文字の選択やコピーのメニューを出さない（押し続けで進む・戻るため）
+  document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('button')) e.preventDefault(); });
   document.addEventListener('keydown', onKeyDown);
   function onKeyDown(e) {
     if (e.target.closest && e.target.closest('input[type=text], input[type=number], select')) return;
@@ -446,7 +448,7 @@
   let bgStillCache = null;       // 背景画像（大きさごと）
   let stillReader = null, bgReader = null;
   let previewGen = 0;
-  let compositeBusy = false, compositePending = false;
+  let compositeBusy = false, compositePending = false, compositeDone = Promise.resolve();
 
   const frameCache = new Map();
   function closeStillReaders() {
@@ -549,8 +551,12 @@
     }
     if (viewMode === 2) { drawRgba(bgStill.data, lyricStill.w, lyricStill.h); return; }
     // 合成：計算中に値が変わったら、終わってからもう 1 回だけ計算する
-    if (compositeBusy) { compositePending = true; return; }
+    // 計算中に呼ばれたときも、その計算（やり直しを含む）が終わるまで待つ
+    // （コマ送りで、絵ができる前にバーだけ先へ進まないように）
+    if (compositeBusy) { compositePending = true; return compositeDone; }
     compositeBusy = true;
+    let doneResolve;
+    compositeDone = new Promise(r => { doneResolve = r; });
     try {
       do {
         compositePending = false;
@@ -559,7 +565,7 @@
         if (player) break;
         if (lyricStill && lyricStill.idx === idx && viewMode === 0) drawRgba(out, w, h);
       } while (compositePending && lyricStill && !player);
-    } finally { compositeBusy = false; }
+    } finally { compositeBusy = false; doneResolve(); }
     if (!player && lyricStill && viewMode === 0) el.lblPlayInfo.textContent = '';
   }
 

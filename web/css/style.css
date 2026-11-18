@@ -333,3 +333,11 @@ body.mobile:not(.landscape):not(.split) #playRow button.play .pi { display: none
   body.mobile:not(.landscape):not(.split) #playRow button.play .pi { display: inline; margin: 0; }
   body.mobile:not(.landscape):not(.split) #playRow button.play .pt { display: none; }
 }
+
+/* ≪ ＜ ＞ ≫ は絵（アイコン）で表示する */
+button.step svg.ic { width: 20px; height: 20px; fill: currentColor; display: block; margin: auto; pointer-events: none; }
+body.mobile button.step svg.ic, #fullBar button.step svg.ic { width: 22px; height: 22px; }
+/* ボタンを長押ししても、文字の選択やコピーのメニューを出さない */
+button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* 押し続けで進む・戻るボタンは、指が少しずれても押し続けが途切れないようにする */
+button.step { touch-action: none; }
