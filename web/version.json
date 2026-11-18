@@ -1,9 +1,9 @@
 {
- "version": "2026.11.18-1132",
- "hash": "77b50419759cf5b204cb8d53d05df282d17e3048be9eeb8aeede2dbad41722f7",
+ "version": "2026.11.18-1148",
+ "hash": "101d9f0622119c384691ecbce218ea4e4ec1f7b49ebc0e265a0bca51b60eceb3",
  "files": {
-  "help.html": "4606f36066a0c3e8caea5021ff6cd53273809b705947b91a3c2407e568b9e9f6",
-  "index.html": "2c004fa60f9adf28282aed6cc48e01acef0f36c42704370aec9cc95ad50971a9",
+  "help.html": "6f5fcad6216c836acedf7bc609172adc5a3c1ad0aaf92d2f0a337dfce1150aaa",
+  "index.html": "d2c672ea1ecafccd35720fb07b9c456ff899a710709abe12a26fa74538bbcaf2",
   "manifest.webmanifest": "c60c198f93862ed62fe2c279f37c3d6b20f708a79abb1b9882b5c708358724b1",
   "css/style.css": "5892be724616d3083d14bbe8a93cad8231e51aa36794a20e9ded4fbf82bbb8f9",
   "help/screen-main.png": "77c00f3fc74935c3c14eed745c845cbe05a1474c6f3a7844978c5aad06edc5df",
@@ -12,7 +12,7 @@
   "help/screen-segdialog.png": "e61461dbd6998092a39a82366c3b1598c7a7951bc7d77e89d2a484e3df1276dc",
   "icons/icon-192.png": "b3cc265072ed0676bb3398626fb2d3453d0477af5a943d2c8ecf6554d33e65ac",
   "icons/icon-512.png": "2eb387bbfe97fbee23c4225984465a64f4c1d6f6fbbf7388b75df087a44d966f",
-  "js/app.js": "f5b0fd05811af5d609c2dfffa2b7505fad06ed5cc9f0eda6d5903385195791ef",
+  "js/app.js": "c2a7a3337e6a2e4e7b2ca76eea7221cf60a9cce5f56d7c241d6aed4c6126ec15",
   "js/compositor.js": "59909f743df18806114e60edec88c0dcd57e1e4435fa40e44a1f73a57f3a5bac",
   "js/filestore.js": "70f6f7ba1aba08696f06472969392352677a66352d7e8c1f784c365768cf2c4a",
   "js/gpu.js": "28a823e8c1a2ebd05118f954bc7303cccd96b1b093181804b9ea9238cec823cd",

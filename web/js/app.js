@@ -1591,6 +1591,7 @@
     if (!confirmDiscardSegments()) return;
     segmentsDirty = false;
 
+    const jsonHandle = handles[ji] || null;     // 区間ファイルの場所（ファイルを選ぶ画面をこのフォルダーで開く）
     const others = files.map((f, k) => ({ file: f, handle: handles[k] || null })).filter((x, k) => k !== ji);
     const pickedByName = name => name && others.find(x => x.file.name.toLowerCase() === name.toLowerCase());
     const isCurrent = (m, name) => m && m.name.toLowerCase() === (name || '').toLowerCase();
@@ -1613,19 +1614,38 @@
     }
     // ---- 見つからなかったものは、フォルダーを選んでもらって探す ----
     const missing = want.filter(w => !found[w.kind] && !w.declined);
-    if (missing.length && window.showDirectoryPicker) {
+    if (missing.length && (window.showDirectoryPicker || window.showOpenFilePicker)) {
       const names = missing.map(w => `${w.label}「${w.name}」`).join('、');
       const lost = missing.some(w => w.rh);
       const ans = await askButtons(
         (lost ? `保存したときの場所に、${names} が見つかりませんでした（移動したか、名前が変わった可能性があります）。`
               : `${names} の場所がわかりません（別のパソコン・Windows 版で保存した区間ファイルなど）。`) +
-        '\n\nファイルのあるフォルダーを選ぶと、その中（サブフォルダーも含む）から同じ名前のファイルを探してセットします。',
-        [{ label: 'フォルダーを選んで探す', value: 'dir', bold: true }, { label: '探さない', value: 'skip' }], 'ファイルを探す');
+        '\n\n・「ファイルを選ぶ」：ファイルを 1 つずつ選びます（区間ファイルと同じフォルダーが開きます）。\n・「フォルダーを選んで探す」：選んだフォルダーの中（サブフォルダーも含む）から、同じ名前のファイルを探します。',
+        [{ label: 'ファイルを選ぶ', value: 'file', bold: true }, { label: 'フォルダーを選んで探す', value: 'dir' }, { label: '探さない', value: 'skip' }], 'ファイルを探す');
+      if (ans === 'file') {
+        // 1 つずつ選んでもらう（選ぶ画面は区間ファイルと同じフォルダーで開く）
+        for (const w of missing) {
+          if (missing.length > 1 || w.kind !== 'lyric') {
+            const go = await askButtons(`${w.label}「${w.name}」を選んでください。`, [{ label: '選ぶ', value: 'ok', bold: true }, { label: '選ばない', value: 'no' }], w.label + 'を選ぶ');
+            if (go !== 'ok') continue;
+          }
+          try {
+            const opts = { types: w.kind === 'lyric' ? VIDEO_TYPES : [...IMAGE_TYPES, ...VIDEO_TYPES], multiple: false };
+            const near = jsonHandle || lyricHandle || (found.lyric && found.lyric.handle);
+            if (near) opts.startIn = near; else opts.id = 'segments';
+            const [h] = await window.showOpenFilePicker(opts);
+            const file = await h.getFile();
+            if (file.name.toLowerCase() !== w.name.toLowerCase() &&
+                !confirm(`保存したときの${w.label}は「${w.name}」ですが、「${file.name}」が選ばれました。\n\nこのファイルを使いますか？`)) continue;
+            found[w.kind] = { file, handle: h };
+          } catch { /* やめた */ }
+        }
+      }
       if (ans === 'dir') {
         let dir = null;
         try {
           const opts = { id: 'segments-folder', mode: 'read' };
-          if (lyricHandle) opts.startIn = lyricHandle;
+          if (jsonHandle || lyricHandle) opts.startIn = jsonHandle || lyricHandle;
           dir = await window.showDirectoryPicker(opts);
         } catch { dir = null; }
         if (dir) {
@@ -1649,7 +1669,7 @@
       await loadLyric(lyricSrc.file, lyricSrc.handle);
     } else if (lyricSrc && lyric && !lyricHandle) lyricHandle = lyricSrc.handle;
     if (!lyric) {
-      alert(`先に歌詞動画を登録してください。\n保存したときの歌詞動画：${proj.lyricName || '（不明）'}\n\n区間ファイルといっしょに動画も選ぶ（または落とす）と、まとめて登録できます。`);
+      alert(`歌詞動画がセットできなかったので、区間を読み込めませんでした。\n保存したときの歌詞動画：${proj.lyricName || '（不明）'}\n\nもう一度「区間読み込み」を押して「ファイルを選ぶ」から歌詞動画を選ぶか、区間ファイルといっしょに歌詞動画も選んでください（Ctrl を押しながら複数選べます）。`);
       return;
     }
     const notes = [];
