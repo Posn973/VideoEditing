@@ -341,3 +341,17 @@ body.mobile button.step svg.ic, #fullBar button.step svg.ic { width: 22px; heigh
 button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 /* 押し続けで進む・戻るボタンは、指が少しずれても押し続けが途切れないようにする */
 button.step { touch-action: none; }
+
+/* 3 段の画面の区間の設定：青い部分の OK（確定して続ける）と、下の「閉じる」 */
+#sdTopOk, #sdClose { display: none; }
+body.split #segDialog:not(.inPip) #sdTopOk { display: inline-block; margin-left: auto; background: #fff; color: #1d4f91; border: 1px solid #fff; font-weight: bold; padding: 4px 16px; min-height: 30px; }
+body.split #segDialog:not(.inPip) #sdTopOk:disabled { opacity: .45; }
+body.split #segDialog:not(.inPip) #sdTopOk + #sdPopout { margin-left: 6px; }
+body.split #segDialog:not(.inPip) #sdClose { display: inline-block; }
+/* シーク位置がどの区間の中にもないとき：設定の欄を灰色にして触れなくする */
+#sdOffMsg { background: #fff4d6; color: #5a3d00; border: 1px solid #e0a100; border-radius: 6px; padding: 6px 10px; margin: 2px 0 6px; font-size: 13px; }
+#sdOffMsg[hidden] { display: none; }
+#segDialog.off .dlgBody > :not(#sdOffMsg):not(.dlgButtons),
+#segDialog.off #sdCopy { opacity: .35; pointer-events: none; }
+/* 3 段の画面では「別の窓に出す」は使わないので隠して、青い部分を広く使う */
+body.split #segDialog:not(.inPip) #sdPopout { display: none; }

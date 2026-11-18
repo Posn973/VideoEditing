@@ -341,6 +341,7 @@
     el.lblTime.textContent = `${fmtTime(curTime)} / ${fmtDuration(lyric.duration)}　（${frameIndexOf(curTime) + 1} コマ目）`;
     if (!draggingTime) el.trkTime.value = curTime;
     drawSegBar();
+    followSegment();
   }
 
   let draggingTime = false;
@@ -1094,16 +1095,21 @@
     selectedSeg = seg;
     markStart = markEnd = null;
     onSegmentsChanged();
+    followSegment(true);
   });
   el.btnEditSeg.addEventListener('click', () => { if (selectedSeg) editSegment(selectedSeg); });
   el.btnDelSeg.addEventListener('click', () => { if (selectedSeg) deleteSegment(selectedSeg); });
 
   function deleteSegment(seg) {
     if (!confirm(`区間 ${fmtSeg(seg.Start)} ～ ${fmtSeg(seg.End)} を削除しますか？`)) return;
-    if (segDlg && segDlg.target === seg) closeSegDialog(false);
+    if (segDlg && segDlg.target === seg) {
+      if (segDlg.follow) { revertSegDialogTarget(); segDlg.target = null; setSegDialogOff(true); }
+      else closeSegDialog(false);
+    }
     segments.splice(segments.indexOf(seg), 1);
     if (selectedSeg === seg) selectedSeg = null;
     onSegmentsChanged();
+    followSegment(true);
   }
 
   // ---- 区間のバー ----
@@ -1240,7 +1246,8 @@
     selectedSeg = seg;
     refreshSegmentUi();
     if (!contains(seg, curTime)) seekTo(seg.Start);
-    segDlg = { target: seg, original: { Start: seg.Start, End: seg.End, Settings: cloneSettings(seg.Settings) }, wasDirty: segmentsDirty };
+    segDlg = { target: seg, original: { Start: seg.Start, End: seg.End, Settings: cloneSettings(seg.Settings) }, wasDirty: segmentsDirty, follow: false };
+    setSegDialogOff(false);
     const step = Math.round(100 / fps()) / 100 || 0.01;
     for (const n of [el.sdStart, el.sdEnd]) { n.max = lyric.duration.toFixed(2); n.step = step; }
     loadDialogValues(seg);
@@ -1273,7 +1280,7 @@
   }
 
   function applyDialog() {
-    if (sdLoading || !segDlg) return;
+    if (sdLoading || !segDlg || !segDlg.target) return;
     const seg = segDlg.target;
     const max = lyric ? lyric.duration : 0;
     // 時間はコマの位置にそろえる（表示は 0.01 秒単位なので、そのままだとちょうどのコマが区間から外れることがある）
@@ -1297,20 +1304,99 @@
   el.sdNowStart.addEventListener('click', () => { el.sdStart.value = curTime.toFixed(2); applyDialog(); });
   el.sdNowEnd.addEventListener('click', () => { el.sdEnd.value = curTime.toFixed(2); applyDialog(); });
   el.sdCopy.addEventListener('click', () => {
-    if (!segDlg) return;
+    if (!segDlg || !segDlg.target) return;
     const keep = { Start: segDlg.target.Start, End: segDlg.target.End, Settings: currentSettings() };
     loadDialogValues(keep);
     applyDialog();
   });
   el.sdOk.addEventListener('click', () => closeSegDialog(true));
   el.sdCancel.addEventListener('click', () => closeSegDialog(false));
+  $('sdClose').addEventListener('click', () => closeSegDialog(false));
+
+  // ---- 3 段の画面：青い部分の OK で確定して、続けてほかの区間を設定する ----
+  // OK のあとは、シーク位置が入った赤い区間に区間の設定が自動で切り替わる。
+  // どの区間の中にもないときは、設定の欄を灰色にする。OK を押していない変更は、別の区間へ移ると取り消す。
+  function setSegDialogOff(off) {
+    el.segDialog.classList.toggle('off', !!off);
+    $('sdOffMsg').hidden = !off;
+    $('sdTopOk').disabled = !!off;
+    if (off) {
+      el.segDlgTitle.textContent = '区間の設定　（区間の外）';
+      if (pipWin) pipWin.document.title = el.segDlgTitle.textContent;
+    }
+  }
+  function sameSeg(a, b) {
+    if (a.Start !== b.Start || a.End !== b.End) return false;
+    for (const k of Object.keys(b.Settings)) if (a.Settings[k] !== b.Settings[k]) return false;
+    return true;
+  }
+  /** 確定していない変更を取り消して、OK を押したときの状態に戻す */
+  function revertSegDialogTarget() {
+    const d = segDlg;
+    if (!d || !d.target || !segments.includes(d.target)) return;
+    if (sameSeg(d.target, d.original)) return;
+    const seg = d.target;
+    seg.Start = d.original.Start; seg.End = d.original.End; seg.Settings = cloneSettings(d.original.Settings);
+    segmentsDirty = d.wasDirty;
+    onSegmentsChanged(false);
+  }
+  function segmentAt(t) {
+    let best = null;
+    for (const sg of segments) if (contains(sg, t) && (!best || sg.Start < best.Start)) best = sg;
+    return best;
+  }
+  let following = false;
+  function followSegment(force = false) {
+    const d = segDlg;
+    if (!d || !d.follow || following) return;
+    if (!force && d.lastT === curTime) return;
+    d.lastT = curTime;
+    following = true;
+    try {
+      // 今の区間の中にいる間は切り替えない（始まり・終わりを動かしている途中もそのまま）
+      if (d.target && segments.includes(d.target) && contains(d.target, curTime)) { setSegDialogOff(false); return; }
+      const next = segmentAt(curTime);
+      if (next === d.target && next) { setSegDialogOff(false); return; }
+      revertSegDialogTarget();
+      if (!next) { d.target = null; setSegDialogOff(true); return; }
+      d.target = next;
+      d.original = { Start: next.Start, End: next.End, Settings: cloneSettings(next.Settings) };
+      d.wasDirty = segmentsDirty;
+      selectedSeg = next;
+      setSegDialogOff(false);
+      loadDialogValues(next);
+      refreshSegmentUi();
+    } finally { following = false; }
+  }
+  $('sdTopOk').addEventListener('click', e => {
+    e.stopPropagation();
+    const d = segDlg;
+    if (!d || !d.target) return;
+    const seg = d.target;
+    if (seg.End <= seg.Start) {
+      alert('終わりが始まりより前になっていたので、入れ替えました。');
+      [seg.Start, seg.End] = [seg.End, seg.Start];
+    }
+    if (overlaps(seg.Start, seg.End, seg))
+      alert('この区間はほかの区間と重なっています。重なった部分では、始まりが早いほうの区間の設定が使われます。');
+    onSegmentsChanged(!sameSeg(seg, d.original) || segmentsDirty);
+    d.original = { Start: seg.Start, End: seg.End, Settings: cloneSettings(seg.Settings) };
+    d.wasDirty = segmentsDirty;
+    d.follow = true;
+    loadDialogValues(seg);
+    toast('確定しました。続けてほかの区間を設定できます（赤い区間の中へ移動してください）', 3500);
+    followSegment(true);
+  });
+  for (const ev of ['pointerdown', 'dblclick']) $('sdTopOk').addEventListener(ev, e => e.stopPropagation());
 
   function closeSegDialog(accepted, keepWindow = false) {
     if (!segDlg) return;
     const d = segDlg;
     segDlg = null;
     if (!keepWindow) { el.segDialog.hidden = true; closePip(); }
+    setSegDialogOff(false);
     const seg = d.target;
+    if (!seg) return;                        // 区間の外で閉じた（確定していない変更はもうない）
     if (!accepted) {
       // キャンセル：開いたときの状態に戻す
       seg.Start = d.original.Start; seg.End = d.original.End; seg.Settings = d.original.Settings;

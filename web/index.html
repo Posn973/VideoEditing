@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>歌詞動画 透過合成（Web 版）</title>
 <link rel="icon" href="icon.png">
-<link rel="stylesheet" href="css/style.css?v=20261118h">
+<link rel="stylesheet" href="css/style.css?v=20261118i">
 </head>
 <body>
 <div id="app">
@@ -162,9 +162,11 @@
 <div id="segDialog" class="floating" hidden>
   <div class="dlgTitle" id="segDlgBar">
     <span id="segDlgTitle">区間の設定</span>
+    <button id="sdTopOk" class="titleBtn bold" title="この区間の変更を確定して、3 段の画面のまま続けて区間を設定します">OK</button>
     <button id="sdPopout" class="titleBtn" title="この設定をブラウザの外の別の窓に出します。窓は好きな場所に動かせて、いつも手前に表示されます">⧉ 別の窓に出す</button>
   </div>
   <div class="dlgBody">
+    <div id="sdOffMsg" hidden>赤い区間の中に移動すると、その区間を設定できます</div>
     <h3>区間の時間（秒）</h3>
     <div class="row"><span class="lbl">始まり</span><input type="number" step="0.01" min="0" id="sdStart"><span id="sdStartLbl" class="info"></span><button id="sdNowStart">今の位置にする</button></div>
     <div class="row"><span class="lbl">終わり</span><input type="number" step="0.01" min="0" id="sdEnd"><span id="sdEndLbl" class="info"></span><button id="sdNowEnd">今の位置にする</button></div>
@@ -192,6 +194,7 @@
       <a href="help.html#segments" target="_blank" rel="noopener" title="区間の使い方を開きます">使い方</a>
       <button id="sdOk" class="bold">OK</button>
       <button id="sdCancel">キャンセル</button>
+      <button id="sdClose" title="区間の設定を閉じます（OK を押していない変更は取り消します）">閉じる</button>
     </div>
   </div>
 </div>
@@ -241,12 +244,12 @@
   <div class="sub" id="exportNoticeLock"></div>
 </div>
 <script src="lib/mediabunny.min.js"></script>
-<script src="js/compositor.js?v=20261118h"></script>
-<script src="js/segments.js?v=20261118h"></script>
-<script src="js/pool.js?v=20261118h"></script>
-<script src="js/media.js?v=20261118h"></script>
-<script src="js/gpu.js?v=20261118h"></script>
-<script src="js/filestore.js?v=20261118h"></script>
-<script src="js/app.js?v=20261118h"></script>
+<script src="js/compositor.js?v=20261118i"></script>
+<script src="js/segments.js?v=20261118i"></script>
+<script src="js/pool.js?v=20261118i"></script>
+<script src="js/media.js?v=20261118i"></script>
+<script src="js/gpu.js?v=20261118i"></script>
+<script src="js/filestore.js?v=20261118i"></script>
+<script src="js/app.js?v=20261118i"></script>
 </body>
 </html>
