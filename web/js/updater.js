@@ -2,9 +2,12 @@
 //
 // ・アプリのファイルは、この端末の中（Cache Storage）に保存してあり、開くときはそこから読みます（sw.js）。
 // ・更新の確認では、GitHub の version.json（ファイルごとのハッシュの一覧、1KB ほど）だけを読みます。
-//     自動：アプリを開いたとき、前の確認から 8 時間以上たっていれば確認する（1 日 3 回まで）。
-//           開いてすぐではなく、少し時間をずらして確認する（大勢が同時に問い合わせないように）。
-//     手動：「更新の確認」。確認したあとの 1 時間は確認しない。
+//     自動：アプリを開くたびに 1 回確認する（起動を遅くしないよう、2～5 秒たってから裏で確認する）。
+//           ネットにつながっていなければ、何も出さずにやめる。
+//     手動：「更新の確認」。続けて押したときのために、1 分だけ間をあける。
+// ・version.json は、毎回ちがう印（?t=時刻）を付けずに読む。GitHub の配信の拠点（CDN）が約 10 分間
+//   写しを持っているので、問い合わせはほとんど拠点で答えられ、GitHub 本体には届かない
+//   （そのかわり、新しい版に気づくのが最大 10～20 分ほど遅れることがある）。
 // ・新しい版があれば「今すぐ更新／後で更新」を出す。
 //     今すぐ更新：変わったファイルだけを読み、ハッシュが合うことを確かめてから入れ替えて、開き直す。
 //                 1 つでも合わなければ何も入れ替えず、今の版のまま使う。
@@ -13,10 +16,10 @@
   'use strict';
   const CACHE = 'videoediting-app';       // sw.js と同じ名前
   const MANIFEST_KEY = '__manifest__';
-  const AUTO_INTERVAL = 8 * 3600 * 1000;  // 自動の確認の間隔（8 時間）
-  const COOL_DOWN = 3600 * 1000;          // 確認したあと、次に確認できるまで（1 時間）
+  const COOL_DOWN = 60 * 1000;            // 手動の確認を続けて押したとき、次に確認するまで（1 分）
   const LS_LAST = 've.update.lastCheck';
   const LS_PENDING = 've.update.pending';
+  const LS_RESULT = 've.update.lastResult';   // 前の確認の結果（'latest' か、見つけた版）
 
   const base = new URL('./', location.href).href;
   const supported = 'serviceWorker' in navigator && 'caches' in self && isSecureContext && location.protocol !== 'file:';
@@ -42,7 +45,8 @@
     return current;
   }
   async function fetchManifest() {
-    const r = await fetch(base + 'version.json?t=' + Date.now(), { cache: 'no-store' });
+    // 印を付けずに読む（配信の拠点の写しで答えてもらう）。ブラウザの一時保存の決まりもそのまま使う
+    const r = await fetch(base + 'version.json');
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const text = await r.text();
     return { text, man: JSON.parse(text) };
@@ -74,7 +78,10 @@
     const now = Date.now();
     const last = +(lsGet(LS_LAST) || 0);
     if (manual && now - last < COOL_DOWN) {
-      hooks.toast(`更新の確認は 1 時間に 1 回までです。次に確認できるのは ${fmtClock(last + COOL_DOWN)} ごろです。`, 5000);
+      // 続けて押したとき：さきほどの結果を伝える
+      const r = lsGet(LS_RESULT);
+      if (r && r !== 'latest' && current && r !== current.version) showBanner(r);
+      else hooks.toast('さきほど確認しました（いまの版が最新です）。新しい版を GitHub に上げた直後は、10 分ほどたってから確認してください。', 5000);
       return;
     }
     busy = true;
@@ -85,11 +92,13 @@
       if (!current) { if (manual) hooks.toast('この端末への保存がまだ終わっていません。少し待ってから開き直してください。', 5000); return; }
       if (sameVersion(man, current)) {
         lsSet(LS_PENDING, null);
+        lsSet(LS_RESULT, 'latest');
         hideBanner();
         if (manual) hooks.toast(`いまの版が最新です（版 ${current.version}）。`, 4000);
         return;
       }
       lsSet(LS_PENDING, man.version);
+      lsSet(LS_RESULT, man.version);
       showBanner(man.version);
     } catch (e) {
       if (manual) hooks.toast('更新を確認できませんでした。インターネットにつながっているか確かめてください。', 5000);
@@ -159,6 +168,7 @@
       // ここまで来たら、変わったファイルがすべてそろっていて、ハッシュも合っている。入れ替える
       await commit(cache, got, man, text, old);
       lsSet(LS_PENDING, null);
+      lsSet(LS_RESULT, 'latest');
       lsSet(LS_LAST, String(Date.now()));
       txt.textContent = `版 ${man.version} に更新しました。開き直します...`;
       window.__updating = true;          // 「ページを離れますか？」を出さない
@@ -175,10 +185,8 @@
     const btn = $('btnCheckUpdate');
     if (!btn) return;
     const last = +(lsGet(LS_LAST) || 0);
-    const wait = last + COOL_DOWN - Date.now();
     btn.title = !supported ? 'GitHub のページから開いたときに使えます'
-      : wait > 0 ? `次に確認できるのは ${fmtClock(last + COOL_DOWN)} ごろです（確認は 1 時間に 1 回まで）`
-      : '新しい版があるか確かめます（確認は 1 時間に 1 回まで）';
+      : '新しい版があるか確かめます' + (last ? `（前の確認：${fmtClock(last)}）` : '');
   }
 
   async function init(h) {
@@ -211,9 +219,8 @@
     const pending = lsGet(LS_PENDING);
     if (pending && current && pending !== current.version) showBanner(pending);
     else if (pending && current && pending === current.version) lsSet(LS_PENDING, null);
-    // 自動の確認：前の確認から 8 時間以上たっていたら、少し時間をずらして確認する
-    const last = +(lsGet(LS_LAST) || 0);
-    if (current && Date.now() - last >= AUTO_INTERVAL) setTimeout(() => check(false), 5000 + Math.random() * 25000);
+    // 自動の確認：開くたびに 1 回、2～5 秒たってから裏で確認する
+    if (current && navigator.onLine !== false) setTimeout(() => check(false), 2000 + Math.random() * 3000);
   }
 
   self.Updater = { init, check, get supported() { return supported; }, get version() { return current && current.version; } };

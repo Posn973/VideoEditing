@@ -5,7 +5,7 @@
 //
 // GitHub に問い合わせるのは、次のときだけです。
 //   ・はじめて開いたとき（すべてのファイルを保存する）
-//   ・更新の確認（version.json という小さなファイル 1 つだけを読む）
+//   ・更新の確認（version.json という小さなファイル 1 つだけを読む。印を付けないので、ほとんどは配信の拠点が答える）
 //   ・新しい版に更新するとき（変わったファイルだけを読む。読み込みと入れ替えは js/updater.js が行う）
 //
 // version.json には、ファイルごとの SHA-256 ハッシュが書いてあります。
@@ -27,7 +27,7 @@ async function sha256Hex(buf) {
 async function installAll() {
   const cache = await caches.open(CACHE);
   if (await cache.match(MANIFEST_KEY)) return;           // すでに保存してある（入れ替えは updater.js が行う）
-  const res = await fetch(base + 'version.json?t=' + Date.now(), { cache: 'no-store' });
+  const res = await fetch(base + 'version.json');
   if (!res.ok) throw new Error('version.json を読めませんでした');
   const text = await res.text();
   const man = JSON.parse(text);

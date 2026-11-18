@@ -1,9 +1,9 @@
 {
- "version": "2026.11.18-1148",
- "hash": "101d9f0622119c384691ecbce218ea4e4ec1f7b49ebc0e265a0bca51b60eceb3",
+ "version": "2026.11.18-1209",
+ "hash": "581c16546f44b2d146e2cf91d27ad6feab10568105447430b5e8b06636d25523",
  "files": {
-  "help.html": "6f5fcad6216c836acedf7bc609172adc5a3c1ad0aaf92d2f0a337dfce1150aaa",
-  "index.html": "d2c672ea1ecafccd35720fb07b9c456ff899a710709abe12a26fa74538bbcaf2",
+  "help.html": "bbab0dec7e0c1aefc8b49e388e822cc34082e5daadd17a387e342a2f38e76e59",
+  "index.html": "2bd39fff0a1980a93ce00a0fe2820282cba73abc38d9453eabc30239fc359dbb",
   "manifest.webmanifest": "c60c198f93862ed62fe2c279f37c3d6b20f708a79abb1b9882b5c708358724b1",
   "css/style.css": "5892be724616d3083d14bbe8a93cad8231e51aa36794a20e9ded4fbf82bbb8f9",
   "help/screen-main.png": "77c00f3fc74935c3c14eed745c845cbe05a1474c6f3a7844978c5aad06edc5df",
@@ -19,7 +19,7 @@
   "js/media.js": "2efcc844437118af0809eda93e7da1321a8951f1f0f25c996b9d9eaa8614315f",
   "js/pool.js": "5a41452292acf8540acbe80b52d416d5d02bc467019e73588116768aaa448361",
   "js/segments.js": "575367a187ce2cf820625ec6f715010b3d87e3a9ef9ef7577a3308853dcdd1c9",
-  "js/updater.js": "e48c4b8953792eaf64ba28e600d4db8c1c20680559e3bd1f37527fa0c37ef315",
+  "js/updater.js": "a32b530fda4e2f03865a2d026dc9a310a1f1d6a30485935600eee79c8b24c653",
   "lib/mediabunny-LICENSE.txt": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04",
   "lib/mediabunny.min.js": "515308bfb924787acc9247f3f9da759ec78cce93b67a5037ed08f9ae46849ea1"
  }
