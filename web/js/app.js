@@ -1750,6 +1750,7 @@
     return confirm('区間の変更が保存されていません。保存せずに続けますか？\n（保存する場合は「キャンセル」を押してから「区間保存」を押してください）');
   }
   window.addEventListener('beforeunload', e => {
+    if (window.__updating) return;      // 新しい版への更新で開き直すとき
     if ((segmentsDirty && segments.length) || exporting) { e.preventDefault(); e.returnValue = ''; }
   });
 
@@ -2260,6 +2261,8 @@
   $('btnHelp').addEventListener('click', () => openHelp());
 
   el.lnkAbout.addEventListener('click', e => { e.preventDefault(); el.aboutDialog.hidden = false; });
+  // 更新の確認（js/updater.js）
+  if (self.Updater) self.Updater.init({ isBusy: () => exporting, confirmLeave: () => confirmDiscardSegments(), toast });
   el.aboutClose.addEventListener('click', () => { el.aboutDialog.hidden = true; });
 
   function checkEnvironment() {

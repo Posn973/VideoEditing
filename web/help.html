@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ヘルプ｜歌詞動画 透過合成（Web 版）</title>
-<link rel="icon" href="icon.png">
+<link rel="icon" href="icons/icon-192.png">
 <style>
   * { box-sizing: border-box; }
   body {
@@ -50,6 +50,7 @@
   .mk1 { color: rgb(0,150,60); font-weight: bold; }
   .mk2 { color: rgb(0,90,200); font-weight: bold; }
   @media (max-width: 860px) { .wrap { flex-direction: column; } nav { position: static; width: auto; } }
+  .btn.icon svg { width: 1em; height: 1em; fill: currentColor; vertical-align: -0.12em; }
 </style>
 </head>
 <body>
@@ -81,6 +82,7 @@
       <ol><li><a href="#export-folder">歌詞動画と同じフォルダーに保存</a></li></ol>
     </li>
     <li><a href="#mobile">スマホ・タブレットで使う</a></li>
+    <li><a href="#update">アプリの更新・インターネットなしで使う</a></li>
     <li><a href="#keys">キーボード操作</a></li>
     <li><a href="#faq">困ったとき</a></li>
   </ol>
@@ -289,8 +291,8 @@
 <section id="play">
   <h2>7. 再生・コマ送り・表示</h2>
   <table>
-    <tr><th><span class="btn">≪</span> <span class="btn">≫</span></th><td>1 秒戻る／進む</td></tr>
-    <tr><th><span class="btn">＜</span> <span class="btn">＞</span></th><td>1 コマ戻る／進む。押し続けると連続で動きます。</td></tr>
+    <tr><th><span class="btn icon" title="≪"><svg viewBox="0 0 24 24" aria-label="≪"><path d="M4 5h2.4v14H4zM20 5v14l-7-7zM13.2 5v14l-7-7z"/></svg></span> <span class="btn icon" title="≫"><svg viewBox="0 0 24 24" aria-label="≫"><path d="M4 5v14l7-7zM10.8 5v14l7-7zM17.6 5H20v14h-2.4z"/></svg></span></th><td>1 秒戻る／進む（ボタンは三角の絵で表示されます。左から「1 秒戻る・1 コマ戻る・再生・1 コマ進む・1 秒進む」の順です）</td></tr>
+    <tr><th><span class="btn icon" title="＜"><svg viewBox="0 0 24 24" aria-label="＜"><path d="M17 5v14L7 12z"/></svg></span> <span class="btn icon" title="＞"><svg viewBox="0 0 24 24" aria-label="＞"><path d="M7 5v14l10-7z"/></svg></span></th><td>1 コマ戻る／進む。押し続けると連続で動きます。そのとき、<b>1 コマごとに絵を表示してから次のコマへ進む</b>ので、修正したい場所を 1 コマずつ確かめられます（スマホでは 1 コマの表示に少し時間がかかるため、ゆっくり進みます）。</td></tr>
     <tr><th><span class="btn">再生</span></th><td>合成結果を再生します。再生中に調整を変えると、次のコマからすぐ反映されます。最後まで再生したあとに押すと、最初から再生します。</td></tr>
     <tr><th>音を出す・音量</th><td>再生のときに歌詞動画の音を出すかどうかと、その音量です（書き出す動画の音量は変わりません）。</td></tr>
     <tr><th>再生の画質</th><td>再生するときの画面の細かさです。<b>自動</b>はプレビューの枠に合わせます（スマホでは小さめ）。カクつくときは「軽い（横640）」や「とても軽い（横360）」にしてください。再生中は軽い計算で表示するため、止めたときの表示とごくわずかに違うことがあります。書き出しの画質には関係ありません。</td></tr>
@@ -348,7 +350,7 @@
   <h2>スマホ・タブレットで使う</h2>
   <p>スマホ（Android の Chrome がおすすめ）でも使えます。画面の大きさに合わせて、自動でスマホ用の配置になります。</p>
   <ul>
-    <li><b>縦向き</b>：ふだんは、上にプレビュー、その下にボタンと ① ～ ④ の欄が並び、画面全体を上下にスワイプして使います。ボタンは上から <span class="btn">区間読み込み</span> → <span class="btn">区間設定</span> <span class="btn">区間削除</span> <span class="btn">区間保存</span> → <span class="btn">ここから</span> <span class="btn">ここまで</span> <span class="btn">区間追加</span> → 時間のスライダー・区間のバー → <span class="btn">≪</span> <span class="btn">＜</span> <span class="btn">再生</span> <span class="btn">＞</span> <span class="btn">≫</span> の順に並びます（区間の情報の表示は省いています）。</li>
+    <li><b>縦向き</b>：ふだんは、上にプレビュー、その下にボタンと ① ～ ④ の欄が並び、画面全体を上下にスワイプして使います。ボタンは上から <span class="btn">区間読み込み</span> → <span class="btn">区間設定</span> <span class="btn">区間削除</span> <span class="btn">区間保存</span> → <span class="btn">ここから</span> <span class="btn">ここまで</span> <span class="btn">区間追加</span> → 時間のスライダー・区間のバー → <span class="btn icon" title="≪"><svg viewBox="0 0 24 24" aria-label="≪"><path d="M4 5h2.4v14H4zM20 5v14l-7-7zM13.2 5v14l-7-7z"/></svg></span> <span class="btn icon" title="＜"><svg viewBox="0 0 24 24" aria-label="＜"><path d="M17 5v14L7 12z"/></svg></span> <span class="btn">再生</span> <span class="btn icon" title="＞"><svg viewBox="0 0 24 24" aria-label="＞"><path d="M7 5v14l10-7z"/></svg></span> <span class="btn icon" title="≫"><svg viewBox="0 0 24 24" aria-label="≫"><path d="M4 5v14l7-7zM10.8 5v14l7-7zM17.6 5H20v14h-2.4z"/></svg></span> の順に並びます（区間の情報の表示は省いています）。</li>
     <li><b>縦向きで「区間設定」を押したとき</b>：画面が<b>同じ高さの 3 段</b>に分かれます。段の大きさと位置は固定で、動くのは中段・下段の中身だけです。OK かキャンセルで区間の設定を閉じると、ふだんの画面に戻ります。
       <ul>
         <li><b>上段</b>：動画のプレビュー（段の中に、歌詞動画の縦横比のまま収まります）。<b>縦長（9:16）の歌詞動画は、横に回して大きく表示します</b>。右上の小さなボタン（<span class="btn">⟳ 右に回転中</span>）を押すたびに「右に回す → 左に回す → 回さない」と切り替わり、選んだ向きは次からも使われます（縦長・横長の動画で別々に覚えます）。回すのは画面の表示だけで、書き出す動画の向きは変わりません。</li>
@@ -365,15 +367,40 @@
     <li>① ～ ④ の見出しをタップすると、その欄を開いたり閉じたりできます。閉じているときも、見出しの右に今の値が表示されます。</li>
     <li>区間の設定は、縦向きでは 3 段の下段に、横向きでは右側に出ます。プレビューを見ながら調整できます。</li>
     <li>区間のバーの赤い区間は、<b>ダブルタップ</b>で設定、<b>長押し</b>でメニューが出ます。</li>
+    <li>ボタンを長押ししても、文字の選択やコピーのメニューは出ません（＜ ＞ は押し続けるとコマ送りが続きます）。</li>
     <li><b>全画面</b>（<span class="btn">⛶ 全画面</span> またはプレビューをダブルタップ）では、縦長・横長のどちらの動画も、回したほうが大きく映るときは<b>自動で回して</b>画面いっぱいに表示します。回す向きは、3 段のときに回転ボタンで最後に選んだ向き（はじめは右）です。スマホを横に持って見ると、まっすぐに見えます。</li>
     <li>全画面にすると、画面の上に「<b>ダブルタップで戻ります</b>」と 3 秒間表示されます。もう一度ダブルタップすると元の画面に戻ります。</li>
-    <li><b>区間の設定を開いたまま全画面にしたとき</b>は、動画の下に <span class="btn">≪</span> <span class="btn">＜</span> <span class="btn">再生</span>（再生中は <span class="btn">停止</span>） <span class="btn">＞</span> <span class="btn">≫</span> <span class="btn">戻す</span> のボタンが出ます。全画面のまま区間の中を確かめられます。<span class="btn">戻す</span>（またはダブルタップ）で区間の設定の画面に戻ります。</li>
+    <li><b>区間の設定を開いたまま全画面にしたとき</b>は、動画の下に <span class="btn icon" title="≪"><svg viewBox="0 0 24 24" aria-label="≪"><path d="M4 5h2.4v14H4zM20 5v14l-7-7zM13.2 5v14l-7-7z"/></svg></span> <span class="btn icon" title="＜"><svg viewBox="0 0 24 24" aria-label="＜"><path d="M17 5v14L7 12z"/></svg></span> <span class="btn">再生</span>（再生中は <span class="btn">停止</span>） <span class="btn icon" title="＞"><svg viewBox="0 0 24 24" aria-label="＞"><path d="M7 5v14l10-7z"/></svg></span> <span class="btn icon" title="≫"><svg viewBox="0 0 24 24" aria-label="≫"><path d="M4 5v14l7-7zM10.8 5v14l7-7zM17.6 5H20v14h-2.4z"/></svg></span> <span class="btn">戻す</span> のボタンが出ます。全画面のまま区間の中を確かめられます。<span class="btn">戻す</span>（またはダブルタップ）で区間の設定の画面に戻ります。</li>
   </ul>
   <div class="note">
     スマホでは、次の機能は使えません：区間の設定を別の窓に出す・ファイルの場所を覚える（区間ファイルを読み込んだときの自動セット）・歌詞動画と同じフォルダーに保存。<br>
     書き出した動画はダウンロードとして保存されます。<br>
     スマホでは「GPU で再生」をオンにしておくと、再生が滑らかになります。それでもカクつくときは、再生の画質を「軽い（横640）」や「とても軽い（横360）」にしてください。スマホはパソコンより処理が遅いので、書き出しには時間がかかります。
   </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="update">
+  <h2>アプリの更新・インターネットなしで使う</h2>
+  <p>GitHub のページ（https://～.github.io/～）から開くと、アプリのファイルが<b>この端末の中に保存</b>されます。次からは保存したファイルで起動するので、速く開けて、<b>インターネットにつながっていなくても使えます</b>（動画の読み込み・合成・書き出しも、もともとすべて端末の中で行っています）。</p>
+  <ul>
+    <li>GitHub に問い合わせるのは、次のときだけです。
+      <ul>
+        <li>はじめて開いたとき（すべてのファイルを保存します。約 1.7MB）</li>
+        <li>更新の確認：開いたとき、前の確認から <b>8 時間以上</b>たっていれば、自動で確認します（1 日 3 回まで）。確認するのは、版の情報を書いた小さなファイル（version.json）1 つだけです。</li>
+        <li>新しい版に更新するとき：<b>変わったファイルだけ</b>を読み込みます。</li>
+      </ul>
+    </li>
+    <li>新しい版があると、画面の上に「新しい版があります」と出ます。
+      <ul>
+        <li><span class="btn">今すぐ更新</span>：変わったファイルを読み込み、中身が正しいこと（ハッシュ）を確かめてから入れ替えて、開き直します。途中で通信が切れたり、中身が合わなかったりしたときは何も入れ替えず、今の版のまま使えます。書き出し中は更新できません。保存していない区間があるときは確認が出ます。</li>
+        <li><span class="btn">後で更新</span>：今は更新しません。次に開いたとき、もう一度お知らせします。</li>
+      </ul>
+    </li>
+    <li>左の欄のいちばん下の <b>「更新の確認」</b>（または「このアプリについて」の中のボタン）で、いつでも確認できます。ただし、確認は <b>1 時間に 1 回まで</b>です（大勢の人が同時に問い合わせないようにするためです）。今の版は、その下に「版 2026.11.18-1100」のように表示されます。</li>
+    <li>スマホの Chrome では「︙」→「<b>ホーム画面に追加</b>」（または「アプリをインストール」）で、ホーム画面のアイコンからアプリのように開けます。</li>
+    <li>パソコンで index.html を直接開いたとき（file://）は、この仕組みは使わず、今までどおりの動きです。</li>
+  </ul>
 </section>
 
 <!-- ============================================================ -->
@@ -407,8 +434,8 @@
   <p>書き出しは元の大きさで 1 コマずつ合成するため、再生より時間がかかります。進み具合の横に残り時間の目安が表示されます。</p>
   <h3>スマホで書き出しが途中で止まる</h3>
   <p>書き出し中に画面を消したり、ほかのアプリやタブに切り替えたりすると、ブラウザが処理を止めてしまいます。書き出し中は画面が自動では消えないようになっていますが、電源ボタンで消した場合は止まります。終わるまでブラウザを表示したままにして、長い動画は充電しながら書き出してください（<a href="#export">くわしく</a>）。</p>
-  <h3>新しい版にしたのに、スマホの表示が前のまま</h3>
-  <p>ページを開き直してください。それでも変わらないときは、Chrome の「︙」→「設定」→「プライバシーとセキュリティ」→「閲覧履歴データを削除」で、「キャッシュされた画像とファイル」だけにチェックを入れて削除してから開き直してください（覚えておいたファイルの場所や設定は消えません）。</p>
+  <h3>新しい版にしたのに、表示が前のまま</h3>
+  <p>アプリは端末に保存した版で動いています。左の欄のいちばん下の「更新の確認」を押して、「新しい版があります」が出たら <span class="btn">今すぐ更新</span> を押してください（確認は 1 時間に 1 回までです）。GitHub にアップロードしてから配信に反映されるまで、数分かかることがあります（<a href="#update">くわしく</a>）。</p>
 </section>
 
 </main>
