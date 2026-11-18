@@ -341,6 +341,7 @@
     el.lblTime.textContent = `${fmtTime(curTime)} / ${fmtDuration(lyric.duration)}　（${frameIndexOf(curTime) + 1} コマ目）`;
     if (!draggingTime) el.trkTime.value = curTime;
     drawSegBar();
+    updateEditSegButton();
     followSegment();
   }
 
@@ -1097,7 +1098,10 @@
     onSegmentsChanged();
     followSegment(true);
   });
-  el.btnEditSeg.addEventListener('click', () => { if (selectedSeg) editSegment(selectedSeg); });
+  // 区間設定：シーク位置が赤い区間の上にあるときはその区間、なければ選んである区間を開く
+  function editTargetSeg() { return (lyric && segmentAt(curTime)) || selectedSeg; }
+  function updateEditSegButton() { el.btnEditSeg.disabled = !(lyric && editTargetSeg()); }
+  el.btnEditSeg.addEventListener('click', () => { const sg = editTargetSeg(); if (sg) editSegment(sg); });
   el.btnDelSeg.addEventListener('click', () => { if (selectedSeg) deleteSegment(selectedSeg); });
 
   function deleteSegment(seg) {
@@ -2043,7 +2047,8 @@
     el.btnMarkStart.disabled = el.btnMarkEnd.disabled = !haveLyric;
     el.btnLoadSeg.disabled = !idle;
     el.btnAddSeg.disabled = !(haveLyric && markStart != null && markEnd != null && markEnd > markStart);
-    el.btnEditSeg.disabled = el.btnDelSeg.disabled = !(haveLyric && selectedSeg);
+    el.btnDelSeg.disabled = !(haveLyric && selectedSeg);
+    updateEditSegButton();
     el.btnSaveSeg.disabled = !(haveLyric && segments.length);
     el.trkTime.disabled = !haveLyric;
     el.cmbPlaySize.disabled = !!player;
