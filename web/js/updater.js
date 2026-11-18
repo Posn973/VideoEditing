@@ -73,7 +73,7 @@
 
   /** 更新の確認。manual = 「更新の確認」を押したとき */
   async function check(manual) {
-    if (!supported) { if (manual) hooks.toast('このページは直接開いているため、更新の確認は使えません（GitHub のページから開いたときに使えます）。', 6000); return; }
+    if (!supported) { if (manual) hooks.toast('GitHub のページから開いたときに使えます', 3000); return; }
     if (busy) return;
     const now = Date.now();
     const last = +(lsGet(LS_LAST) || 0);
@@ -81,7 +81,7 @@
       // 続けて押したとき：さきほどの結果を伝える
       const r = lsGet(LS_RESULT);
       if (r && r !== 'latest' && current && r !== current.version) showBanner(r);
-      else hooks.toast('さきほど確認しました（いまの版が最新です）。新しい版を GitHub に上げた直後は、10 分ほどたってから確認してください。', 5000);
+      else hooks.toast('最新版です', 2500);
       return;
     }
     busy = true;
@@ -89,19 +89,19 @@
       if (!current) await readCurrent();
       const { man } = await fetchManifest();
       lsSet(LS_LAST, String(Date.now()));
-      if (!current) { if (manual) hooks.toast('この端末への保存がまだ終わっていません。少し待ってから開き直してください。', 5000); return; }
+      if (!current) { if (manual) hooks.toast('準備中です。少し待ってから開き直してください', 3000); return; }
       if (sameVersion(man, current)) {
         lsSet(LS_PENDING, null);
         lsSet(LS_RESULT, 'latest');
         hideBanner();
-        if (manual) hooks.toast(`いまの版が最新です（版 ${current.version}）。`, 4000);
+        if (manual) hooks.toast('最新版です', 2500);
         return;
       }
       lsSet(LS_PENDING, man.version);
       lsSet(LS_RESULT, man.version);
       showBanner(man.version);
     } catch (e) {
-      if (manual) hooks.toast('更新を確認できませんでした。インターネットにつながっているか確かめてください。', 5000);
+      if (manual) hooks.toast('確認できませんでした（インターネットにつながっていません）', 3000);
       else console.warn('更新の確認に失敗しました:', e);
     } finally { busy = false; updateCheckButton(); }
   }
